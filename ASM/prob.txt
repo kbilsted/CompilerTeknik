@@ -1,0 +1,9 @@
+Turbo Assembler  Version 3.0  Copyright (c) 1988, 1991 Borland International
+
+Assembling file:   probasm.asm
+**Error** probasm.asm(213) Relative jump out of range by 003Dh bytes
+Error messages:    1
+Warning messages:  None
+Passes:            1
+Remaining memory:  411k
+

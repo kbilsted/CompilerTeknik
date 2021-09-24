@@ -1,0 +1,223 @@
+\chapter{Indledning}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\OverviewLineNoTitle
+
+En compiler læser et program skrevet i et sprog, og oversætter det til et ækvivalent program i et andet sprog. Tilbage i 1960'erne, var dét at skabe en compiler betragtet som svært. Aho beretter i bogen ``Compilers --- Principles, techniques, and tools'', at den første Algol-compiler tog 18 mandeår at udfærdige~\cite{aho}. Med tiden har man dog dels fået udviklet en struktureret måde at nedfælde grammatikker, dels fået beskrevet de generelle faser en compiler gennemgår i et oversættelsesforløb. Således er det i dag muligt for en studerende, at skrive en compiler af rimeligt omfang på et semester.
+
+Til dette projekt knytter der sig følgende tese, som var udgangspunkt for projektet: 
+
+\begin{quote}\textit{Ved at anvende en compiler, der kan oversætte et Java program til native kode, kan programmer afvikles hurtigere end JDK's virtual machine. Dette gælder både med hensyn til opstart, og den faktiske udførsel også selvom den producerede kode ikke optimeres.}
+
+\textit{
+Compileren dette projekt præsenterer, kan derfor anvendes til compilering af små nyttige programmer, der herved opnår at være mindre ressourcekrævende og hurtigere i deres udførsel.
+}\end{quote}
+
+At skabe en compiler på et semester, der tilnærmelsesvis ligner Java, er fuldstændigt urealistisk. Den eneste måde dette kan lade sig gøre på, er ved hårdhændet at anvende følgende to begræsninger, trods de mange fristelser for at fordybe sig i små specifikke områder:
+
+\begin{itemize}
+\item[$\blacktriangleright$] Compilerens kontrol for fejl nedtones kraftig.
+\item[$\blacktriangleright$] Der implementeres kun en lille delmængde af Javasproget.
+\end{itemize}
+
+
+\section{Kravsspecifikation}
+\label{s:kravsspecifikation}
+Målet med projektet er at skabe en compiler i Java, der kan oversætte en delmængde af Java til Intel 80286 kompatibel assembler. Assemblerkoden skal kunne afvikles efter assemblering og linkning med en ekstern assembler (i projektet anvendes TASM fra Borland). Delmængden af Java bliver i rapporten refereret til som ``Qjava'', mens compileren, der konstrueres, går under navnet ``Qjava compileren''.
+
+Projektets fokus er at skabe en compiler, der kan producere assemblerkode som kan afvikles. Der ses bort fra effektivitetsspørgsmål, både med hensyn til compillerens effektivitet og effektiviteten af den genererede kode. Der ses bort fra fejl ved oversættelsen (typefejl) og dynamiske fejl (overflow, division med 0 osv). De eneste fejl, der detekteres, er syntaks fejl, og et mindre antal scopefejl (dvs. om en variabel kan anvendes i det rigtige scope). Således skal javaprogrammer, der er indeholdt i Qjava og som kan kan compileres i JDK, også kunne compileres i Qjava compileren, der her præsenteres. Ydermere lægges der ikke vægt på en eksakt formel præcisering af Qjava. I \kref{c:qjavaspecifikation} uddybes afgrænsningen af QJava.
+
+
+\subsection{Fremgangsmåde}
+For at kunne skabe Qjava compileren, argumenteres og opstilles en grammatik for Qjava, som compileren herefter følger. Slutteligt findes samt opstilles ækvivalenter mellem sprogene Java og assembler, som kodegeneratordelen slutteligt anvender.
+
+Overordnet for rapporten gælder at den sigter på at vurdere og diskutere forskellige implementationsmuligheder, fremfor udelukkende at fremlægge ``den optimale løsningsmodel''.
+
+
+\subsection{Implementering}
+\label{ss:projektkriterier}
+Kriterierne for implementationen af compileren, udover at den skal realiseres i programmeringssproget Java, er, at det søges udført udfra dels objekt orienterede principper, dels på baggrund af, hvad der er muligt at gøre elegant i Java. Disse mål konkretiseres igennem følgende 5 punkter:
+
+\begin{description}
+\item[Indkapsling] Indkapsling af funktionalitet ved brug af klasser, der igennem restriktioner (access modifiers) kun giver brugeren adgang til klassens overordnede funktionalitet.
+
+\item[Polymorfisme] Polymorfisme, der igennem nedarvning lader programmeringssproget finde og udføre de passende funktioner.
+
+\item[Begrænset nedarvning] Brugen af nedarvning begrænses så compileren ikke udformes i ``stive'' klasser.
+
+\item[Designmønstre] Til løsning af kravsspecifikationen, indgår anvendelsen af design mønstret Facade.
+
+\item[Nuanceret klassedefinition] Der anvendes nuancerede klassedefinitioner, det vil sige almindelige klasser, abstrakte klasser, samt interfaces.
+\end{description}
+
+
+\subsection{Målgruppe}
+Læseren forudsættes at være velbefærdiget i Java, da beskrivelser og forklaringer af Javas funktionalitet og udforming er udeladt. Forklaringer af de anvendte, samt foreslåede datastrukturer, er ligeledes udeladt. Yderligere vil kendskab til assembler være en fordel. Der findes et utal af lærebøger om algoritmer og compilerteknik, Java og assembler --- denne rapport er ikke et forsøg på at efterligne nogle af dem.
+
+
+\section{Begrænsning}
+\label{s:begraensninger}
+Afgrænsningen af Qjava er sket udfra to principper
+\begin{itemize}
+\item[$\blacktriangleright$] Qjava skal fremstå som ``eksemplarisk'' (jfr. ``det eksemplariske princip'', altså at belyse et givent område udfra et eksempel) hvorfor det skal være enkelt, så principperne, hvorpå det hviler, skinner igennem.
+
+\item[$\blacktriangleright$] Det skal være muligt at skrive små programmer i Qjava uden for mange krumspring.
+\end{itemize}
+
+Eller kortere: der søges en balance mellem ``need to have'' og ``nice to have''.
+
+\subsection{Need to have}
+Hvis principperne for sammenligning er vist igennem implementeringen af operatorene \t{<, <=},
+giver implementeringen af operatorene \t{>, >= } ikke anledning til nyt stof. Det eneste der introduceres er mere sourcekode for Qjava compileren, der gør det sværere at danne sig et overblik, samtidig med, at der opstår flere potentielle fejlkilder. Følgende dele af Java er derfor udeladt, da de let kan substitueres af andre dele af Qjava.
+
+\begin{description}
+\item[\t{char, int}:] substituerer typerne \t{boolean, byte, short, long, float, double}.
+\item[\t{while}:] substituerer \t{for}, \t{do-while} løkker.
+\item[\t{if-else}:] substituerer \t{if, switch-case} betingelsessætninger.
+\item[\t{<, <=}:] substiturer operatorene \t{>, >=}.
+\item[\t{+, -}:] substiturerer operatorene \t{++}, \t{-}\t{-}.
+\end{description}
+
+Da Qjava compileren er underlagt klare udeladelser er følgende dele udeladt:
+\begin{description}
+\item[Semantik] Da compileren ikke har nedarvning, udelades \t{instanceof} operatoren.  
+\item[1-fil] Da compileren udelukkende opererer på en sourcekodefil, udelukker dette: \t{import, package} med flere.
+\item[Sjælden anvendelse] \t{continue} og \t{break} (med label) udelades, trods de let kan implementeres, da de repræsenterer dårlig programmeringsskik og sjældent anvendes.
+\item[Casting] Casting er ikke medtaget, hverken til konvertering for simple typer (f.eks. fra \t{int} til \t{char}), eller til dynamisk typekontrol, da sidstnævnte kun kan forekomme hvis nedarvning eksisterer. 
+\item[this]  \t{this} referencen er ikke medtaget.
+\item[Access modifiers] Access modifiers (\t{public, private, final}) kan alle let implementeres, men for små programmer, er disse elementer ubetydelige, hvorfor de er udeladt.
+\end{description}
+
+Slutteligt er \t{abstract, try-catch-throws, synchronized} ikke implementeret.
+
+Semantisk analyse, nedarvning, garbage collection, kode optimering er interessante facetter af en compiler, men er bevidst udladt jfr. \ref{s:begraensninger} begrænsninger.
+
+
+\subsubsection{Fejl}
+Fejlmeldinger er i compileren holdt på et minimum, oftest med programstop til følge. Qjava  compileren kan være mere tolerent overfor fejl end JDK (SUN's implementation af en javacompiler), men aldrig mere stringent --- bortset fra det faktum, at Qjava i sig selv er en begrænsning i forhold til Java.
+
+Idéen bag compileren er, at brugerens programmer skal skabes og kunne fungere i JDK. Qjava compileren skal først anvendes, når brugeren ønsker en hurtigere afvikling af sit færdige program.
+
+
+\subsubsection{Optimering}
+Der er i projektet ikke søgt at optimere hverken hukommelsesforbrug eller afviklingshastighed af compileren, da optimeringer oftest aldrig gør implementationen klarere. Står valget mellem to implementationsmuligheder, der har samme kompleksitet med hensyn til implementering, vælges dog i reglen den hurtigste.
+
+
+
+\subsection{Nice to have}
+Nedenstående viser hvilke operatorer, der kunne være udeladt, men som alligevel er inkluderet, da de dels gør programmeringen langt mindre besværlig, dels var lette at implementere.
+
+\begin{description}
+\item[\t{||, \&\&}] kunne skrives med flere \t{if, while}.
+\item[\t{|, \&}] anvendes sjællent og kunne derfor udgå.
+\item[\t{<=, ==, !=}] kunne skrives ved brug af \t{<}.
+\item[\t{-, *, /, \%}] kunne implementeres med \t{+}.
+\end{description}
+
+
+
+\section{Beskrivelse af Qjava }
+\label{s:sprogdef}
+Overordnet består Qjava af: Klasser, funktioner, felter og variable af typerne \{char, int, String\},  referencer til objekter, samt sætninger.
+
+Bemærk at hverken nedarvning eller konstruktorer er implementeret for klasser. Som gældende i Java, må variabelnavne, funktionsnavne og klassenavne ikke indeholde ``\t{.}'', da ``.'' anvendes som separator af disse. Klassenavne forlanges i unikke, og skal være forskellige fra ``String'' og ``Integer''. Endvidere skal der forefindes én og kun en funktion ved navn ``\t{main()}''.
+
+
+\subsubsection{Sætninger}
+Af sætningstyper eksisterer: Tildelinginger, \t{if-else, while, break, return}, funktionskald i eget objekt og funktionskald i andet objekt (dog ikke flere niveauer som f.eks. \t{s.next.p()}), tilgang til variable i eget og i andre objekter.
+
+
+\subsubsection{Operatorer}
+Operatorerne er begrænset til:\\
+\t{+, -, *, /, \%, !, !=, <=, <, =, ==, ||, \&\&, |, \&} \\
+
+
+\subsubsection{Variable og deres typer}
+Typerne er \t{char, int, String}, samt boolske udtryk. \t{char, int} er implementeret ved 16 bit, med et talområde på $\pm  2^{15} =$ ca. $\pm 32768$, da 1 bit anvendes til repræsentation af fortegn. Dog er resultater fra \t{\%} (modulo operationen) kun 8 bit stor pga. assemblers begrænsninger.
+
+Da \t{this} referencen ikke er implementeret, må variables navne ikke være identiske i scopes der ligger inde i hinanden. Det vil sige, at felter ikke må være identiske med variable erklæret i funktioner eller som argumenter til funktioner. Variable og funktioners navne må være identiske.
+
+Alle referencer til objekter kan antage værdien \t{null}
+
+
+\subsubsection{Kommentarer}
+Kommentarerne er standard Javakommentarer: \t{/* */} samt \t{// [EOL]}. Som i Java, understøttes ikke nestedede kommentarer.
+
+
+\subsubsection{\t{String} klassen}
+Javas \t{String} klasse er delvist implementeres, hvilket vil sige følgende funktioner (hvor \t{s1, s2} er af typen \t{String}, og \t{pos} er af typen \t{int}):
+
+\begin{tabular}{ll}
+Tildeling & \t{s1 = "text string "} \\
+Aflæsning & \t{s1.charAt(pos)} \\
+Sammenkædning & s1 = \t{s1.contcat(s2);} \\
+\end{tabular}
+
+Bemærk at \t{StringBuffer} klassen ikke implementeres.
+
+
+\subsubsection{Andre standard Javapakker}
+Ud over \t{String} er en delmængde af \t{System.in} og \t{System.out} implementeret.
+
+\vskip 2mm
+\begin{tabular}{ll}
+\t{int System.in.read()} & returnerer ASCII værdi af et tastetryk \\
+\t{void System.out.print(String s)} & Udskriver \t{s} til skærm. \\
+\end{tabular}
+\vskip 2mm
+
+ \t{System.out.print()} kan \textbf{ikke} udskrive \t{char} eller \t{int}, hvorfor metoden \\ \mbox{\t{static String Integer.toString(int)}} skal anvendes. \t{n} af typen \t{int}, kan således udskrives ved følgende kald: \mbox{\t{System.out.print( Integer.toString(n) );}}
+
+
+\subsubsection{Afrunding}
+I forhold til modul 1 på datalogi/RUC's målsætning om at lære Java og forstå sprogets sammenhænge, passer dette projekt godt, da det netop er sproget og ikke kodegenereringen, der er fokus. Projektet er endvidere et godt oplæg til et modul 2 projekt, der kunne udbygge compileren med en semantik kontrol, advanceret kodegenerering, lager-administration og kodeoptimering.
+
+
+\section{Praktiske detaljer for rapporten}
+\subsection{Typografi}
+For overblikkets skyld har typografien en semantisk betydning. \t{Mono-space font som dette} betegner programmeringskode, eller in- og out-put, der anvendes i forbindelse med kode eller test.
+
+For tal gælder det, at ender de på \t{h} eller \t{b} betyder det, at tallet er skrevet i henholdsvis det hexadecimale eller binære talsystem. Tal uden bogstavendelse er skrevet i det decimale talsystem.
+
+
+\subsection{Sproganvendelse}
+Rapporten anvender i flæng danske og engelske gloser. Dette kan for nogen være et udtryk for dårlig dansk eller måske mangel på smag. Imidlertidigt er det et forsøg på at afværge brugen af alt for klodsede danske ord såsom ``spildopsamling'' og ``indlejrede''. Af samme grund er grammatikken for Qjava, samt al programmeringskoden holdt i engelsk.
+
+Samtidig er håbet, at sproganvendelsen reducerer nogle af de tvetydigheder, der findes i det skrevne sprog. Når der anvendes ``compiler'' om oversættelsesprocessen som ét hele, kan ``oversætte'' anvendes i snævre situationer, hvor f.eks. et tegn bliver til et tal. Altså hvor der slet ikke er tale om samme 'oversættelses-apparat', som det ``compiler'' dækker over i denne rapport.
+
+\subsubsection{Felter og variable}
+Der skelnes i rapporten mellem variable erklæret i klasse scope og varible erklæret i funktioner/variable der er argumenter til funktioner. Førstnævnte benævnes ``felter'', mens de resterende kaldes ``variable''. Benævnes alle variable i en klasse kaldes disse ``klassens variable''.
+
+\subsection{Diagrammer}
+I de diagrammer, hvor det er meningsfuldt at tale om start- og slut-tilstande, er disse udformet som:
+
+~~~~~~~~~~~~~~~\xymatrix
+{*+[F-:<4pt>]{\txt{Starttilstand}} \ar[r] & *+[F]{\txt{tilstand}} \ar[r] & *+[F=]{\txt{Sluttilstand}} }
+
+
+
+\section{Rapportens opbygning}
+Kapitel \ref{c:compilerstruktur} beskriver alle compilerens faser i korte træk, og gennemgår hvorledes Qjava koden er opbygget. 
+
+Kapitel \ref{c:qjavaspecifikation} specificerer Qjava og opstiller en EBNF grammatik.
+
+Kapitlerne \ref{c:lexer}--\ref{c:kodegenerering} uddyber kapitel 2.
+
+Kapitel \ref{c:afprovning} fastsætter grænserne for compilerens pålidelighed igennem afprøvning af compilerens faser.
+
+Kapitel \ref{c:hastighedstest} prøver meget kort at sammenligne Qjava compileren med JDK.
+
+Kapitel \ref{c:perspektivering}--\ref{c:konklusion} afrunder projektet med perspektivering og konklusion, som vil præsentere erfaringer med kørsel af compileren.
+
+I appendix forelægger hele sourcekoden til Qjava.
+
+
+\section{\LaTeX }
+For de interesserede, er rapporten udfærdiget i \LaTeX2e\ med hjælp fra følgende pakker:\\
+\Xy -pic til de fleste diagrammer.\\
+De resterende illustrationer blev tegnet i \textsf{JavaFig}, og konverteret til ps med \textsf{fig2dev}\\
+\textsf{graphicx} til inkludering af ps-billeder.\\
+\textsf{fancyhdr} til definering af headings.\\
+\textsf{showkeys} til debug af henvisninger.\\
+Kapitel-layout blev manuelt fremstillet af undertegnede i en cls fil, der er at finde på internettet.
+

@@ -1,0 +1,22 @@
+\chapter{Kørselsvejledning}
+For at skabe en \t{*}.exe fil, der kan afvikles under DOS, skal man igennem flere stadier, denne korte vejledning vil vise hvilke og hvordan. Vejledningen tager udgangspunkt i et korrekt installeret Javamiljø (JDK) samt assemblermiljø (TASM).
+
+\OverviewLineNoTitle
+
+\subsubsection{.java $\longrightarrow$ .asm}
+ Først skal  ens Java sourcekode compileres til assemblerkode, dette gøres ved at skrive
+
+\verb£C:\>java Qjava filnavn£
+
+ Dette afvikler Qjava compileren, der læser sourcekoden ``filnavn.java'', og skriver filen ``filnavn.asm''. Bemærk, at der ingen endelse findes på filen der gives som argument til compileren.
+
+\subsubsection{.asm $\longrightarrow$ .exe}
+Sidste stadie kræver både en assemblering og en linkning. Dette udføres ved at skrive
+
+\verb£C:\>tasm filnavn.asm£
+
+\verb£C:\>tlink filnavn.obj£
+
+Hvis alt har forløbet problemfrit, findes nu ``filnavn.exe'', der kan afvikles.
+
+

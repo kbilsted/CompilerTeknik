@@ -1,0 +1,141 @@
+\chapter{Hastighedstest}
+\label{c:hastighedstest}
+\OverviewLineNoTitle
+
+Fokus i dette projekt er ikke, om der kan genereres hurtigere kode end JDK, trods tesen der igangsatte projektet var, at selv håbløs assembler ville være meget hurtigere end JDK. Der er derfor ikke anvendt nævneværdige ressourcer på hverken hastighedsmålinger eller udfærdigelse af forskellig type testkode. Udgangspunktet for hastighedstestene er et program der finder alle primtal mellem 3--32000 på den værst tænkelige måde. Man kan næppe udfra dette drage konklusioner af større omfang. Der er mange faktorer der ikke er taget højde for, f.eks. hvor meget betyder det at programmet er på få linier kode? Hvor meget betyder alle funktionskaldene? Hvor meget betyder det at Qjava kører 16 bit, mens JDK kører 32 bit? Disse spørgsmål vil fortsat være ubesvarede.
+
+Testmaskinen er en K6-200 mhz MMX med 96 MB RAM og Windows 98. Den anvendte JDK er v1.3b og TASM 3.1 til assemblering af Qjava koden. 
+
+Første gang et java program udføres kopieres nogle generelle bibloteker til memory, hvilket skulle gøre opstarten hurtigere ved flere kørsler. Til JDK 1.3b har man koncentreret sig om at reducere opstartstiden. På testmaskinen blev opstartstiden målt til ca. 1 sekundt.
+
+I testkørsler klarede JDK testen på 10 sekunder, altså ca. 9 sekunder uden opstart. For Qjava var resultatet noget overraskende 11 sekunder! 
+
+Da den genererede assembler producerede åbenlys uproduktiv kode, blev output fra Qjava optimeret i hånden udfra følgende to principper
+
+\subsubsection{Princip 1}
+Mødes koden (hvor \t{\#} noterer et register)
+
+\begin{quote}
+\t{push \#$_1$\\
+...\\
+pop \#$_1$}
+\end{quote}
+
+kan koden helt fjernes, hvor det forudsættes, at ``\t{...}'' ikke refererer \t{\#$_1$}
+
+\subsubsection{Princip 2}
+Mødes koden (hvor \t{X} noterer en værdi)
+
+\begin{quote}
+\t{mov  \#$_1$, X\\
+push \#$_1$  \\
+...\\
+pop  \#$_2$  \\
+}
+\end{quote}
+
+hvor ``\t{...}'' ikke tilgår \t{\#$_1$} eller \t{\#$_2$} kan det optimeres til 
+
+\begin{quote}
+\t{mov  \#$_2$, X\\
+...\\
+}
+\end{quote}
+
+
+Følgende eksempel
+
+\begin{quote}\example
+\t{mov  \#$_1$, X\\
+push \#$_1$  \\
+mov  \#$_1$, X2\\
+push \#$_1$  \\
+pop  \#$_2$  \\
+pop  \#$_1$  
+}
+\end{quote}
+
+kan ved brug af disse to principper reduceres til 
+
+først (princip 2)
+\begin{quote}
+\t{mov  \#$_1$, X\\
+push \#$_1$  \\
+mov  \#$_2$, X2\\
+pop  \#$_1$  
+}
+\end{quote}
+
+derefter (princip 1)
+
+\begin{quote}
+\t{mov  \#$_1$, X\\
+mov  \#$_2$, X2\\
+}
+\end{quote}
+
+Eksemplet er ikke tilfældigt valgt. Kodeblokken anvendes hvergang der skal foretages en binær eller dual operation, f.eks. addition eller sammenligning.
+
+Resultatet med optimering efter princip 1 gav en køretid på 10 sekunder. Da princip 2 også blev taget i anvendelse, blev køretiden 8 sekunder. Qjava blev altså hurtigere end JDK. Slutteligt blev koden optimeret yderligere manuelt ved at fjerne de boolske repræsentationer, og anvende \t{inc} istedet for ``\t{add \#, 1}'' og andre småting, men hvor strukturen i oversættelsen blev bibeholdt. Dette gav en køretid på 6 sekunder.
+
+Ved anvendelse af lettere optimering, kan anvendelse af Qjava give mindre tidsbesparelse. Dog viser testen at besparelsen aldrig bliver i størrelsesordenen en faktor og derfor er til at overse.
+
+
+\section{Primtalstest.java}
+\label{s:primtalstest}
+Nedenstående kode blev anvendt til hastighedstest. Da DOS ikke kan håndtere en while-løkke i en while-løkke sådan som dette genereres i Qjava, løses problemet med metoden \t{loop()}. For ikke udskrivningsalgoritmerne for skærmudskrivning skulle have betydning, udskrives der ikke i programmet.
+
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+
+class Prime
+{
+    static void main()
+    {
+        Prime ptr;
+        ptr = new Prime();
+
+        ptr.loop();
+    }
+    
+    
+    void loop()
+    {
+        int p;
+        p = 3;
+            
+        while(p < 32001)
+        {
+            isPrime(p);
+            p = p + 1;
+        }
+    }
+    
+            
+    void isPrime(int p)
+    {
+        int i;
+        i = 2;
+        
+        while(i < p)
+        {
+            if(p%i == 0)
+            {
+                return;
+            }
+            else
+            {
+                i = i + 1;
+            }
+        }
+
+
+        if(i == p)
+        {   // we've got ourselves a prime!
+        }
+        else{}
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+        
+    

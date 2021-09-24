@@ -1,0 +1,99 @@
+/*
+ * test for parseren 23.11.99
+ */
+ 
+class A
+{
+	// vardef i classscope
+	int i;
+	
+	// fncdef uden argumenter
+	void a()
+	{
+		// fnccall til eget og andre objekter
+		a();
+		b(1, 2,3);
+		B.c();
+		
+		// if
+		if(a) 
+		{
+			// assign
+			aaa = 2;
+		}
+		else
+		{	
+			// assign i andet objekt
+			B.j = 3;
+		}
+	}
+	
+	
+	// fncdef med argumenter
+	void b(int k, String l)
+	{
+		break;
+		return;
+
+		// en while	
+		while(i != 2)
+		{
+			return(); // return med parenteser
+		}
+
+		
+		; // tom linie (kun ";")
+	}
+}
+
+
+// multible klasser
+class B
+{
+	void c()
+	{
+		// vardef i function scope
+		int j;
+		int k;	
+		
+		// E-E11	 testes
+		e = 1 || 2;
+		e1 = 3 && 4;
+		e2 = 5 | 6;
+		e3 = 7 & 8;
+		e4_1 = 9 == 10;
+		e4_2 = 11 != 12;
+		e5_1 = 13 < 14;
+		e5_2 = 15 <= 16;
+		e6_1 = 17 + 18;
+		e6_2 = 19 - 20;
+		e7_1 = 21 * 22;
+		e7_2 = 23 / 24;
+		e7_3 = 25 % 26;
+
+		e8 = new B();
+		e9_1 = !27;
+		e9_2 = -28;
+		e10_1 = foo;
+		e10_2 = foo.bar;
+		e10_3 = foo(29+30);
+		e10_4 = foo(31, 32);
+		e11_1 = "en streng";	
+		e11_2 = 'b';
+		e11_3 = 2;
+		e11_4 = (3);
+	
+		// en kombinations af flere E'er
+		if( (a != 2 && b == 3) || (c < -2|3) || !(d <= e&4%5*6+7- -8/9) )
+		{}
+		else
+		{
+			int x;
+		}
+
+		i = 2+3*4;
+		i = (2+3)*4;
+		i = 2-3-4;
+	}
+}
+

@@ -1,0 +1,195 @@
+\chapter{Qjava output}
+\label{a:qjavaoutput}
+
+Nedenstående kode er output'et fra Qjava compileren der oversatte primtalstesten i \kref{s:primtalstest}, hvor standardfunktionerne er fjernet. Disse kan ses i sin fulde længde i slutningen af \aref{a:codegenerator} da de blindt indsættes i alle genererede programmer. 
+
+\begin{footnotesize}\begin{verbatim}
+Prime_loop PROC
+    mov  bp, sp ; adjust bp to point at functions local variable
+    sub  bp, 2
+    push 0 ; put all local variables on stack
+    ; assign
+    mov  ax, 3
+    push ax
+    pop  ax ; get value (assign)
+    mov  [bp-0], ax ; set local variable p
+start_while1:
+    ; condition code
+    mov  ax, [bp-0] ; get local variable p
+    push ax
+    ; 
+    mov  ax, 32001
+    push ax
+    pop  dx
+    pop  ax
+    cmp  ax, dx
+    jl   less_2
+    xor  ax, ax ; is not <
+    jmp  less_end2
+less_2:
+    mov  ax, 65535 ; is <
+less_end2:
+    push ax
+    pop  ax ; compare condition code
+    cmp  ax, 0
+    je   end_while1 ; condition is false
+    ; fnccallGen
+    push bp
+    mov  ax, [bp-0] ; get local variable p
+    push ax
+    call Prime_isPrime
+    pop  cx ; de-stack arguments
+    pop bp
+    ; assign
+    mov  ax, [bp-0] ; get local variable p
+    push ax
+    ; 
+    mov  ax, 1
+    push ax
+    pop  dx
+    pop  ax
+    add  ax, dx
+    push ax
+    pop  ax ; get value (assign)
+    mov  [bp-0], ax ; set local variable p
+    jmp  start_while1 ; loop once more
+end_while1:
+Prime_loop_end:
+    pop  ax   ; de-stack local variables
+    ret
+Prime_loop ENDP
+
+
+Prime_isPrime PROC
+    mov  bp, sp ; adjust bp to point at functions local variable
+    sub  bp, 2
+    push 0 ; put all local variables on stack
+    ; assign
+    mov  ax, 2
+    push ax
+    pop  ax ; get value (assign)
+    mov  [bp-0], ax ; set local variable i
+start_while3:
+    ; condition code
+    mov  ax, [bp-0] ; get local variable i
+    push ax
+    ; 
+    mov  ax, [bp+4] ; get argument variable p
+    push ax
+    pop  dx
+    pop  ax
+    cmp  ax, dx
+    jl   less_4
+    xor  ax, ax ; is not <
+    jmp  less_end4
+less_4:
+    mov  ax, 65535 ; is <
+less_end4:
+    push ax
+    pop  ax ; compare condition code
+    cmp  ax, 0
+    je   end_while3 ; condition is false
+    mov  ax, [bp+4] ; get argument variable p
+    push ax
+    ; 
+    mov  ax, [bp-0] ; get local variable i
+    push ax
+    pop  si
+    pop  ax
+    xor  dx, dx
+    div  si
+    push dx
+    ; 
+    mov  ax, 0
+    push ax
+    ; equal
+    pop  dx
+    pop  ax
+    cmp  ax, dx
+    je   eq_6
+    xor  ax, ax  ; is !=
+    jmp  eq_end6
+eq_6:
+    mov  ax, 65535 ; is ==
+eq_end6:
+    push ax
+    pop  cx     ; start if_4
+    cmp  cx, 0
+    je   else_5
+then_5:
+    jmp  Prime_isPrime_end ; return
+    jmp  endif_5
+else_5:
+    ; assign
+    mov  ax, [bp-0] ; get local variable i
+    push ax
+    ; 
+    mov  ax, 1
+    push ax
+    pop  dx
+    pop  ax
+    add  ax, dx
+    push ax
+    pop  ax ; get value (assign)
+    mov  [bp-0], ax ; set local variable i
+endif_5:
+    jmp  start_while3 ; loop once more
+end_while3:
+    mov  ax, [bp-0] ; get local variable i
+    push ax
+    ; 
+    mov  ax, [bp+4] ; get argument variable p
+    push ax
+    ; equal
+    pop  dx
+    pop  ax
+    cmp  ax, dx
+    je   eq_8
+    xor  ax, ax  ; is !=
+    jmp  eq_end8
+eq_8:
+    mov  ax, 65535 ; is ==
+eq_end8:
+    push ax
+    pop  cx     ; start if_6
+    cmp  cx, 0
+    je   else_7
+then_7:
+    jmp  endif_7
+else_7:
+endif_7:
+Prime_isPrime_end:
+    pop  ax   ; de-stack local variables
+    ret
+Prime_isPrime ENDP
+
+
+START:
+    mov  ax, @data ; setup DOS program
+    mov  ds, ax
+    ; allocate object main resides in
+    mov  cx, 0
+    call new
+    mov  bp, sp     ; adjust bp to point at functions local variable
+    sub  bp, 2      ;
+    mov  bx, ax    ; store main's 'this' 
+    ; execute mains contents
+    push 0    ; push local variables to stack 
+    ; assign
+    ; new
+    mov  cx, 0 ; size of class Prime
+    call new
+    push ax ; save adr pointer of object
+    pop  ax ; get value (assign)
+    mov  [bp-0], ax ; set local variable ptr
+    ; fnccallGen
+    push bp
+    push bx
+    mov  bx, [bp-0] ; push callers class' 'this'
+    call Prime_loop
+    pop  bx ; restore this class' 'this'
+    pop  bp
+    jmp  SystemExit
+END
+
+\end{verbatim}\end{footnotesize}

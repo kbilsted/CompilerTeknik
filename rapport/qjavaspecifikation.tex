@@ -1,0 +1,329 @@
+\chapter{Qjava specifikation}
+\label{c:qjavaspecifikation}
+
+\begin{itemize}
+\item[$\circlearrowright$] Udformning af Qjava, sektion \xref{s:udformning_af_qjava}
+\item[$\circlearrowright$] Flertydighed, sektion \xref{s:flertydighed}
+\item[$\circlearrowright$] Venstrerekursion, sektion \xref{s:venstrerekursion}
+\item[$\circlearrowright$] Første sæt, sektion \xref{s:foerstesaet}
+\item[$\circlearrowright$] Afrunding, sektion \xref{s:afrunding_qjavaspecifikation}
+\end{itemize}
+\OverviewLine
+
+Sproget compileren skal oversætte defineres i første omgang syntaktisk ved hjælp af en grammatik. Grammatikken udformes udfra hvorledes compileren tilgår syntakskontrollen f.eks. top-down, eller predictive-top-down. Da compileren anvender predictive-top-down, udformes QJavas grammatik på EBNF. 
+
+Dette kapitel vil derfor først forklare sprogets opbygning med ord, hvorefter den skrives formaliseret på EBNF. Herefter tilrettes grammatikken til predictive-top-down metodens krav for grammatik. Trods læseren forventes at kende Javas opbygning og syntaks, beskrives dette alligevel med ord, da det reflekterer forfatterens indgangsvinkel og fungerer dermed som argumentation for den færdige grammatik.
+
+\section{Udformning af QJavas grammatik}
+\label{s:udformning_af_qjava}
+Generelt for klassenavne, metodenavne, variabelnavne, pointernavne, samt variabeltyper gælder det, at de hverken må starte med et tal, eller indeholde ``\t{.}'' . Førstnævnte af syntaktiske årsager, og sidstnævnte, fordi ``\t{.}'' anvendes som separator mellem metoder, klasser og variable og pointere; f.eks. variablen \t{i} i klassen \t{A}, skrives \t{A.i}. 
+
+
+Inden beskrivelsen af grammatikken finder sted, gentages for læseren definitionerne på \i{id} og \i{name}.
+
+\begin{EBNFtable}
+\itm{id}{En tegnsekvens, der er forskellig fra Javas reserverede keywords, med undtagelse af \t{char, int, String}.}
+\itm{name}{\i{id} ``.'' \i{id} \{ ``.'' \i{id} \}}
+\end{EBNFtable}
+ 
+
+Herfra forklares og formaliseres den del af Java Qjava dækker ``oppe fra og ned'', dvs. der startes med hvad et Javaprogram er, og afsluttes med operatorer og variable. Grammatikkens start noteres med S.
+
+
+\subsubsection{S}
+Et Javaprogram består af en eller flere klassedefinitioner (\i{classdef}). Det giver ikke mening at angive noget udenfor dette scope, bortset fra \t{import, package} --- som ikke er indeholdt i Qjava.
+\\
+\EBNF{S}{$\big\{$ \i{classdef} $\big\}$}
+
+
+\subsubsection{classdef, classcontents}
+En klassedefinition består af et navn, samt klassens ``krop'' (\i{classcontents}) indkapslet i tuborgparenteser (\t{\{...\}}). For Qjava gælder det, at klassens krop udelukkende består af variabel- og metode- definitioner. Dette er en restriktion i forhold til Java der også tillader klassedefinitioner, \t{static} blokke og konstruktører. Ekstra ``\t{;}'' før og efter erklæringer tillades men ignoreres under parsningen.
+\\
+\EBNF{classdef}{``class'' \i{id} ``\{'' \i{classcontents} ``\}'' }
+\EBNF{classcontents}{$\big\{$ ( \i{vardef} $|$ \i{fncdef} $|$ ``\t{;}'' ) $\big\}$ }
+
+
+\subsubsection{vardef}
+Qjava understøtter udelukkende variabeldefinitioner der opretter en og kun en variabel pr. variabeldefinition, uden værditildeling. Variablens type kan i grammatikken ikke fastlægges på forhånd, da Qjava tillader definering af nye klasser. De eneste faste typer i Qjava er \t{int}, \t{char} og \t{String} som alle i lexeren bliver til \i{id} tokens. Da variabelnavnet ikke må indeholde ``\t{.}'', er variabelnavne altid \i{id}.
+\\
+\EBNF{vardef}{ \i{id} \i{id} ``\t{;}''}
+
+
+\subsubsection{fncdef}
+Funktioner i Qjava kan ikke returnere værdi, hvilket defineres eksplicit med ``void''. Argumenter til funktioner indkapsles af parenteser, og angives ved først deres type derefter deres navn. Funktionernes ``krop'' (\i{sentences}) indkapsles af tuborgparenteser. Som før angives typerne på argumentvariable samt deres navne med \i{id}.
+\\
+\EBNF{fncdef}{``void'' \i{id} ``\t{(}'' \Big[ \i{id} \i{id} \big\{ ``,'' \i{id} \i{id} \big\} \Big] ``\t{)}'' ``\{'' \i{sentences} ``\}'' }
+
+
+\subsubsection{sentences}
+Indholdet af funktioner består af en eller flere sætninger. Sætningerne spænder lige fra  ``flow control'' (\t{if}, \t{while}, \t{break} og \t{return}), variabel definitioner (\i{vardef}), funktionskald (\i{fnccall}), til  tildelingssætninger (\i{assign}). Endvidere kan ``\t{;}'' optræde mellem hver sætning.
+\\
+\EBNF{sentences}{$\big\{$ \i{vardef}$|$\i{fnccall}$|$\i{if}$|$\i{while}$|$\i{break}$|$\i{return}$|$\i{assign}$|$``\t{;}'' \big\} }
+
+
+\subsubsection{fnccall}
+Et funktionskald kan indeholde komma-separerede argumenter i form af udtryk eller variable (da disse genkendes i \i{E$_{10}$}) indkapslet i parenteser. Da der skelnes mellem tegnsekvenser med og uden ``\t{.}'', kan funktionskald både være typen \i{name} og \i{id}, f.eks. ``\t{f()}'' og ``\t{A.f()}''.
+\\
+\EBNF{fnccall}{$\big($ \i{name} $|$ \i{id} $\big)$ ``\t{(}'' $\Big[$ \i{E} $\big\{$ ``,'' \i{E} $\big\}$ $\Big]$ ``\t{)}'' ``\t{;}''}
+
+
+
+\subsubsection{if}
+if-sætninger i Qjava kræver en else-blok, der dog kan være tom.
+\\
+\EBNF{if}{``if'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' \i{sentences} ``\}'' ``else'' ``\{'' $\big[$ \i{sentences}  $\big]$ ``\}'' }
+
+
+\subsubsection{while}
+Den eneste løkkestruktur Qjava understøtter er \t{while}. while-løkken udføres sålænge udtrykket (\i{E}) mellem parenteserne er sandt. Følgeligt skal udtrykket være et udtryk, hvor det er muligt at tale om at det er sandt eller falsk, f.eks. \t{i < 100} men ikke \t{i = 2}. while's krop, der kan være tom, indkapsles af tuborgparenteser.
+\\
+\EBNF{while}{``while'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' $\big[$ \i{sentences}  $\big]$ ``\}''}
+
+
+\subsubsection{break}
+``break'' anvendes til at afbryde while-løkker.
+\\
+\EBNF{break}{``break'' ``\t{;}''}
+
+
+\subsubsection{return}
+``return'' kan ikke returnere værdier, men kan på grund af kompabilitet  efterfølges af et tomt parentessæt. 
+\\
+\EBNF{return}{``return'' [ ``('' ``)'' ] ``\t{;}''}
+
+
+\subsubsection{assign}
+Tildelinger kan enten være variable der tildeles en værdi, eller pointere der tildeles en adresse til et objekt. Variabelnavnet kan enten være lokalt defineret, eller være defineret i en anden klasse, hvorfor både \i{name} og \i{id} tillades som variabelnavn.
+\\
+\EBNF{assign}{$\big($ \i{name} $|$ \i{id} $\big)$ = \i{E} ``\t{;}''}
+
+
+\subsubsection{E}
+Det eneste der nu står os uklart er  \i{E}. \i{E} står for et expression, der defineres således:
+
+
+\begin{tabular}{llp{10.6cm}}
+\itm{E}{\i{number} $|$ \i{id} $|$ \i{name} $|$ \i{E} + \i{E} $|$ \i{E} - \i{E} $|$ \i{E} * \i{E} $|$ \i{E} / \i{E} $|$ \i{E} \% \i{E} $|$ ( \i{E} ) $|$ - \i{E} $|$ \i{E} ``$|$'' \i{E} $|$ \i{E} \& \i{E} $|$ \i{E} \&\& \i{E} $|$  \i{E} "$||$" \i{E} $|$  \i{E} \t{==} \i{E} $|$ \i{E} \t{!=} \i{E} $|$  \i{E} \t{<=} \i{E} $|$  \i{E} \t{<} \i{E} $|$ \t{!} \i{E} $|$ ``new'' \i{id} ``\t{()}'' } 
+\end{tabular}
+
+Man kunne undres over at finde \t{new} i \i{E} istedet for at være defineret i \i{sentences} som en ``allokerings-sætning''. Dette ville blot komplicere genkendelsen af \i{assign} og \i{vardef} , og ville umuliggøre anvendelsen af eksempelvis \mbox{\t{new A()}} som argument i et funktionskald. 
+
+\bigskip\bigskip
+
+For overblikket skyld ses her den samlede grammatik.
+
+\begin{EBNFtable}
+\itm{S}{$\big\{$ \i{classdef} $\big\}$}
+\itm{classdef}{``class'' \i{id} ``\{'' \i{classcontents} ``\}'' }
+\itm{classcontents}{$\big\{$ ( \i{vardef} $|$ \i{fncdef} $|$ ``\t{;}'' ) $\big\}$ }
+\itm{vardef}{ \i{id} \i{id} ``\t{;}''}
+\itm{fncdef}{``void'' \i{id} ``\t{(}'' \Big[ \i{id} \i{id} \big\{ ``,'' \i{id} \i{id} \big\} \Big] ``\t{)}'' ``\{'' \i{sentences} ``\}'' }
+\itm{sentences}{$\big\{$ \i{vardef} $|$ \i{fnccall}$|$\i{if}$|$\i{while}$|$\i{break} $|$ \i{return} $|$ \i{assign} $|$ ``\t{;}'' \big\} }
+\itm{fnccall}{$\big($ \i{name} $|$ \i{id} $\big)$ ``\t{(}'' $\Big[$ \i{E} $\big\{$ ``,'' \i{E} $\big\}$ $\Big]$ ``\t{)}'' ``\t{;}''}
+\itm{if}{``if'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' \i{sentences} ``\}'' ``else'' ``\{'' $\big[$ \i{sentences}  $\big]$ ``\}'' }
+\itm{while}{``while'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' $\big[$ \i{sentences}  $\big]$ ``\}''}
+\itm{break}{``break'' ``\t{;}''}
+\itm{return}{``return'' [ ``('' ``)'' ] ``\t{;}''}
+\itm{assign}{$\big($ \i{name} $|$ \i{id} $\big)$ = \i{E} ``\t{;}''}
+\itm{E}{\i{number} $|$ \i{id} $|$ \i{name} $|$ \i{E} + \i{E} $|$ \i{E} - \i{E} $|$ \i{E} * \i{E} $|$ \i{E} / \i{E} $|$ \i{E} \% \i{E} $|$ ( \i{E} ) $|$ - \i{E} $|$ \i{E} ``$|$'' \i{E} $|$ \i{E} \& \i{E} $|$ \i{E} \&\& \i{E} $|$  \i{E} "$||$" \i{E} $|$  \i{E} \t{==} \i{E} $|$ \i{E} \t{!=} \i{E} $|$  \i{E} \t{<=} \i{E} $|$  \i{E} \t{<} \i{E} $|$ \t{!} \i{E} $|$ ``new'' \i{id} ``\t{()}'' } 
+\label{t:firstGrammar}
+\end{EBNFtable}
+
+
+
+\section{Flertydighed}
+\label{s:flertydighed}
+Opskrives udtrykket \t{2+3*4} i et parsertræ kan det ifølge gramatikken antage form som  skitseret på \fref{f:ambigousParsetree1}, der betyder 
+henholdsvis \t{(2+3)*4}  (figur \ref{f:ambigousParsetree1} a) og \t{2+(3*4)}  (figur \ref{f:ambigousParsetree1} b).
+
+\begin{figure}[!h]
+\begin{center}
+\fbox{
+\xymatrix
+{
+	& 					& *\txt{\t{*}} \DOWNL \DOWNR	&	& & 		& + \DOWNL \DOWNR	 \\
+	& + \DOWNL \DOWNR	& 			& 4 	& *\txt{Eller}&  2	& 		& *+={\txt{\t{*}}} \DOWNL \DOWNR \\
+2	& 			& 3 			&	& & 		& 3		& 		& 4	
+}}
+\Caption{(a) og (b) --- To forskellige parsertræer, for udtrykket {\tt 2+3*4}.}
+\label{f:ambigousParsetree1}
+\end{center}
+\end{figure}
+
+I den virkelige verden er dette ikke noget problem, da udtrykket altid læses som \t{2+(3*4)}, 
+man siger, at ``\t{*} binder stærkere end \t{+}''. Dette skyldes udelukkende, at operatorene ved konvention er blevet tildelt forskellige prioriteter eller bindinger. Samtidig er det vedtaget, at binære operatore er associerer til venstre, dvs \t{a=b=c} er ækvivalent med \t{a=(b=c)}. 
+
+Grammatikken skal altså modificeres, da den er flertydig, og dermed ikke kan repræsentere operatorenes prioritet. For at vise principperne bag en sådan modificering, tages der udgangspunkt i en delmængden ``\t{+ - * / \i{number}}'' af \i{E}. Prioriteten disse  operatorer er givet ved: 
+
+1. prioritet: number
+2. prioritet: \t{  * /} \\
+3. prioritet: \t{  +  -}
+
+Dette fører til en opsplitning af \i{E}:
+
+\begin{EBNFtable}
+\itm{E$_1$}{\ii{E}{2} \{ ($+|-$) \ii{E}{2} \} }
+\itm{E$_2$}{\ii{E}{3} \{ ($*|/$) \ii{E}{3} \} }
+\itm{E$_3$}{number}
+\end{EBNFtable}
+
+Man kan overbevise sig selv om korrektheden af grammatikken ved at opskrive et parsertræ (man kunne jo mene, at \ii{E}{1} og \ii{E}{2} skulle ombyttes). På \fref{f:prioparsertree} vises udtrykket \t{2+(3*4)}. Kombinationen af figur samt den nye grammatik giver forhåbenligt læseren det indtryk, at hvis udtrykket \t{2+(3*4)} skal udregnes, skal multiplikationen udføres før additionen.
+
+\medskip
+\begin{figure}[!h]
+\begin{center}
+\fbox{
+\xymatrix@R=0.5cm@C=0.3cm
+{
+*+={E1} \DOWN	& *+={+}  \ar@{-}[l] \DOWNR \\
+*+={E2} \DOWN	& & *+={E2} \DOWN		& *+={*} \ar@{-}[l] \DOWNR   	&                     	\\
+*+={E3} \DOWN	& & *+={E3} \DOWN	    &                               & *+={E3} \DOWN        	\\
+*+{\txt{number(2)}}	& & *+{\txt{number (3)}}&                               & *+{\txt{number (4)}}	\\ 
+}}
+\end{center}
+\Caption{Parsertræet for {\tt 2+(3*4)}.}
+\label{f:prioparsertree}
+\end{figure}
+
+For Qjava kan være kompatibels med Java, må sprogene have identiske prioriter for operatorene. \tref{t:opprioritet} lånt fra \cite[side 102--103]{arnold}, viser operatorenes indbyrdes prioriteter, hvor kun de operatorer der eksisterer i Qjava er inkluderet. Prioriteten er givet ved operatorens placering i tabellen, hvor den øverste række har højest prioritet, og den nederste række lavest prioritet.
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Beskrivelse & Operator\\
+\hline
+Postfix operatorer & \verb£. ( )£\\
+Postfix op. &\verb£! - (monadisk) £\\
+Creation	& \verb£new £\\
+Multiplicative	& \verb£* / %£\\
+Additive    & \verb£+ -£\\
+Relational	& \verb£< <=£\\
+Equality    & \verb£== !=£\\
+Bitwise AND	&\verb£&£\\
+Bitwise OR 	&\verb£|£\\
+Logical AND	&\verb£&&£\\
+Logical OR	& \verb£||£\\
+Assignment	&\verb£=£\\
+\hline
+\end{tabular}
+\end{center}
+\Caption{Operatorer og deres indbyrdes prioritet i Java.}
+\label{t:opprioritet}
+\end{table}
+
+
+Parentessættet er ikke operatorrer, men medtages alligevel. Prioriteten de tildeles er afgørende for, hvor deres placering i udtryk er tilladt. Var parenteserne placeret på linie med \t{+, -} i tabellen, ville udtrykket \t{3*(4/5)} være syntaktisk ulovligt, mens \t{2+(3*4)} ville være tilladt. Da parenteser anvendes til enten at omdefinere rækkefølgen hvormed udtryk udregnes, eller til at vise rækkefølgen eksplicit, skal de have højst mulig prioritet, så de kan placeres overalt i udtryk. Af samme grund skal \i{id} , \i{name}, \i{number} indføres med høj prioritet. 
+
+Modificeres grammatikken således operatorenes relative prioritet er identisk med Javas, bliver resultatet:
+
+\begin{table}[!h]
+\begin{EBNFtable}
+\itm{E}{\ii{E}{1} \{ ``$||$'' 			\ii{E}{1} \} }
+\itm{E$_1$}{\ii{E}{2} \{ ``\t{\&\&}''	\ii{E}{2} \} }
+\itm{E$_2$}{\ii{E}{3} \{ ``$|$'' 		\ii{E}{3} \} }
+\itm{E$_3$}{\ii{E}{4} \{ ``\t{\&}''		\ii{E}{4} \} }
+\itm{E$_4$}{\ii{E}{5} \{ ( ``\t{==}'' $|$ ``\t{!=}'' ) \ii{E}{5} \} }
+\itm{E$_5$}{\ii{E}{6} \{ ( ``$<$'' $|$ ``$<=$'' )	\ii{E}{6} \} }
+\itm{E$_6$}{\ii{E}{7} \{ ( ``\t{+}'' $|$ ``\t{-}'' ) 	\ii{E}{7} \} }
+\itm{E$_7$}{\ii{E}{8} \{ ( ``\t{*}'' $|$ ``\t{/}'' $|$ ``\t{\%}'' ) \ii{E}{8} \} }
+\itm{E$_8$}{\ii{E}{9} $|$ ``new'' \i{id} ``\t{()}''  }
+\itm{E$_{9}$}{ $\big[$ ``\t{!}'' $|$ ``\t{-}'' $\big]$ \ii{E}{10} }
+\itm{E$_{10}$}{ \ii{E}{11} $|$ $\big($ \i{name} $|$ \i{id} $\big)$  $\Big[$ ``\t{(}'' \i{E} $\big\{$ ``\t{,}'' \i{E} $\big\}$ ``\t{)}'' $\Big]$  }
+\itm{E$_{11}$}{\i{number} $|$ ``\t{(}'' \i{E} ``\t{)}''}
+\end{EBNFtable}
+\caption{\i{E} opsplittet således operatorenes indbyrdes prioriteter kan repræsenteres i parsertræet.}
+\label{t:Eopsplit}
+\end{table}
+
+
+Det ses i tabellen, er operatoren \t{=} ikke er medtaget, da der ikke ønskes udtryk som \mbox{\t{while(i = 2)}}, og fordi de steder hvor \t{=} bør kunne anvendes, kan \i{assign} anvendes. 
+
+Opsplitning i \i{E$_{10}$} og \i{E$_{11}$} sker udfra filosofien, at funktionskald og variable er noget ``eksternt'' der skal hentes ``udefra'', hvorimod tal er ``interne'' størrelser. Opsplitningen har ingen syntaktiske konsekvenser.
+
+
+\section{Venstrerekursion}
+\label{s:venstrerekursion}	
+Da teknikken predictive-top-down parsing anvendes til at opbygge et parse-træ, er det vigtigt at grammatikken ikke er venstre-rekursiv. Venstre-rekursiv vil sige, at det første i en produktion på højresiden af pilen er en non-terminal identisk med non-terminalen på venstresiden af pilen. Eksisterer en sådan konstruktion vil en anvendelse af grammtikken føre til en uendelig regres ved parsning af input der indeholder den pågældende non-terminal.
+
+Grammatikken var for \i{E} venstre-rekursiv, før introduktionen af operatorenes prioritet. Men som det ses af \tref{t:Eopsplit}, er den det ikke længere.
+
+
+
+\section{Første sæt}
+\label{s:foerstesaet}
+Den sidste undersøgelse grammatikken underlægges før den skal anvendes, er hvorvidt den muliggør en let genkendelse af non-terminalerne. Det første der står på højre side af pilen må ikke være identisk for tokens der syntaktisk kan stå på samme sted i en tokensekvens --- med andre ord, må grammatikkens første sæt (eng: first set) ikke være overlappende. Sker dette, kan rekursiv nedstigning-teknikken ikke anvendes, da det ikke er muligt at afgøre hvilken nedstigningen, der skal foretages før flere tokens er indlæst.
+
+Projektet vil ikke præsentere en formel første sæt analyse, men nøjes med grundigt at se på grammatikken. Det ses, at følgende dele af grammatikken er problematiske:
+
+\example\begin{EBNFtable}
+\itm{sentences}{$\big\{$ \i{vardef} $|$ \i{fnccall} $|$ \dots $|$ \i{assign} \big\} }
+\itm{vardef}{ \i{id} \i{id} ``\t{;}'' }
+\itm{fnccall}{\i{id} ``\t{(}'' $\Big[$ \i{id} $\big\{$ ``,'' \i{id} $\big\}$ $\Big]$ ``\t{)}'' ``\t{;}''}
+\itm{assign}{\i{id} = \i{E} ``\t{;}''}
+\end{EBNFtable}
+
+Hvis parseren beginder sig i en \t{sentences} og det følgende token er \i{id} hvilken nedstigning skal da finde sted? Dette er umuligt at afgøre, før endnu et token er indlæst. \t{Lexer} klassen faciliterer en \t{pushBack()} metode til netop dette formål. Ønsker man ikke at anvende ``se næste tegn og bestem dig'' teknikken kan grammatikken omskrives til:
+
+\newpage
+\example\begin{EBNFtable}
+\itm{sentence}{$\big\{$ \ii{sentence}{2} $|$ \i{if} $|$ \i{while} \big\} }
+\itm{sentence$_2$}{ \i{id}  $\big($ \i{vardef} $|$ \i{fnccall} $|$ \i{assign}  $\big)$ }
+\itm{vardef}{ \i{id} ``\t{;}'' }
+\itm{fnccall}{``\t{(}'' $\Big[$ \i{id} $\big\{$ ``,'' \i{id} $\big\}$ $\Big]$ ``\t{)}'' ``\t{;}''}
+\itm{assign}{= \i{E} ``\t{;}''}
+\end{EBNFtable}
+
+Den færdige grammatik for Qjava, som klasserne \t{Parser}, \t{Tree} (samt alle dens underklasser) og \t{CodeGenerator} bygger på ses i tabel \tref{t:samletGrammar}.
+
+Klassen \t{Tree} med underklasser findes i \aref{a:tree}.
+
+\begin{table}[b]
+\fbox{
+\begin{EBNFtable}
+\itm{S}{$\big\{$ \i{classdef} $\big\}$}
+\itm{classdef}{``class'' \i{id} ``\{'' \i{classcontents} ``\}'' }
+\itm{classcontents}{$\big\{$ ( \i{vardef} $|$ \i{fncdef} $|$ ``\t{;}'' ) $\big\}$ }
+\itm{vardef}{ \i{id} \i{id} ``\t{;}''}
+\itm{fncdef}{``void'' \i{id} ``\t{(}'' \Big[ \i{id} \i{id} \big\{ ``,'' \i{id} \i{id} \big\} \Big] ``\t{)}'' ``\{'' \i{sentences} ``\}'' }
+\itm{sentences}{$\big\{$ \i{vardef} $|$ \i{fnccall}$|$\i{if}$|$\i{while}$|$\i{break} $|$ \i{return} $|$ \i{assign} $|$ ``\t{;}'' \big\} }
+\itm{fnccall}{$\big($ \i{name} $|$ \i{id} $\big)$ ``\t{(}'' $\Big[$ \i{E} $\big\{$ ``,'' \i{E} $\big\}$ $\Big]$ ``\t{)}'' ``\t{;}''}
+\itm{if}{``if'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' \i{sentences} ``\}'' ``else'' ``\{'' $\big[$ \i{sentences}  $\big]$ ``\}'' }
+\itm{while}{``while'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' $\big[$ \i{sentences}  $\big]$ ``\}''}
+\itm{break}{``break'' ``\t{;}''}
+\itm{return}{``return'' [ ``('' ``)'' ] ``\t{;}''}
+\itm{assign}{$\big($ \i{name} $|$ \i{id} $\big)$ = \i{E} ``\t{;}''}
+\itm{E}{\ii{E}{1} \{ ``$||$'' 			\ii{E}{1} \} }
+\itm{E$_1$}{\ii{E}{2} \{ ``\t{\&\&}''	\ii{E}{2} \} }
+\itm{E$_2$}{\ii{E}{3} \{ ``$|$'' 		\ii{E}{3} \} }
+\itm{E$_3$}{\ii{E}{4} \{ ``\t{\&}''		\ii{E}{4} \} }
+\itm{E$_4$}{\ii{E}{5} \{ ( ``\t{==}'' $|$ ``\t{!=}'' ) \ii{E}{5} \} }
+\itm{E$_5$}{\ii{E}{6} \{ ( ``\t{<}'' $|$ ``\t{<=}'' )	\ii{E}{6} \} }
+\itm{E$_6$}{\ii{E}{7} \{ ( ``\t{+}'' $|$ ``\t{-}'' ) 	\ii{E}{7} \} }
+\itm{E$_7$}{\ii{E}{8} \{ ( ``\t{*}'' $|$ ``\t{/}'' $|$ ``\t{\%}'' ) \ii{E}{8} \} }
+\itm{E$_8$}{\ii{E}{9} $|$ ``new'' \i{id} ``\t{()}''  }
+\itm{E$_{9}$}{ $\big[$ ``\t{!}'' $|$ ``\t{-}'' $\big]$ \ii{E}{10} }
+\itm{E$_{10}$}{ \ii{E}{11} $|$ $\big($ \i{name} $|$ \i{id} $\big)$  $\Big[$ ``\t{(}'' \i{E} $\big\{$ ``\t{,}'' \i{E} $\big\}$ ``\t{)}'' $\Big]$  }
+\itm{E$_{11}$}{\i{number} $|$ ``\t{(}'' \i{E} ``\t{)}''}
+\end{EBNFtable}
+}
+\Caption{Den komplette grammatik for QJava.}
+\label{t:samletGrammar}
+\end{table}
+
+
+
+
+\section{Afrunding}
+\label{s:afrunding_qjavaspecifikation}
+Det har været interessant at opbygge en grammatik for et programmeringsprog fra bunden, da man på måde forstår mekanismerne i sproget. Endvidere får man en forståelse af, at forskellige konstruktioner af grammatikken giver forskellige muligheder, men også besværligheder ved implementationen. Grammatikkens gennemgang kan virke banal, men man skal være varsom med at lade sig snyde af den kompakte form hvormed den er opskrevet, da selvom det ser let ud, har været et tidskrævende arbejde. Under udarbejdelsen af grammatikken har der ikke været hentet ``inspiration'' fra andre kilder.
+
+Opsplitningen i \i{id} og \i{name} har været foretaget for dels at kunne begrænse \i{vardef} samt argumenterne i \i{fncdef}, da det vil være meningsløst at anvende \i{name}, da Qjava ikke understøtter \t{static} variable. Dels gøres kodegenereringen lettere, da \i{id} repræsenterer lokale variable, mens \i{name} repræsenterer variable/metoder i andre objekter.
+
+Dette har dog også være grobund for diskusioner om hvorvidt et \i{id} burde udskiftes med \i{name}, eller omvendt, eller om begge typer tokens måtte tillades på det pågældende sted. 
+
+I forhold til Java afviger Qjava helt sikkert med \i{id}/\i{name} differentieringen, og en sådan burde nok også fjernes, hvis den semantiske kontrol blev implementeret, da denne dels kunne tage sig af det semantiske (at der ikke ønskes en \i{name} i \i{vardef} f.eks.) men også kunne markere om navnet indeholdt ``\t{.}'', således kodegeneratoren lettere kunne generere kode.
+
+Den anden umiddelbare forskel i forhold til Java er, at operatoren \t{=} i Qjava er en sætning, hvor den i Java er et udtryk. Dette ses udfra \tref{t:opprioritet}, hvor \t{=} har en prioritet modsat grammatikken i tabel \ref{t:samletGrammar}.
+
+

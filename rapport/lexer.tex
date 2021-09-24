@@ -1,0 +1,169 @@
+\chapter{Leksikalsk analyse}
+\label{c:lexer}
+Dette kapitel beskæftiger sig med implementationsovervejelser for klassen \t{Lexer}, samt  de dele af programmet, der naturligt hører herunder.
+
+\OverviewLineNoTitle
+
+\section{Implementationsovervejelser}
+
+\subsection{Lexer klassen}
+Et krav til lexeren er, at slutproduktet er identisk med det JDK producerer, ellers vil Qjava compileren kunne generere kode, der fungerede utilsigtet. Her menes ikke hvorvidt eksempelvis negative tal læses \t{-\ tal} eller \t{-tal}, men om f.eks. sekvensen \t{+++} læses \t{++\ +}, \t{+\ ++} eller \t{+++}.
+
+Til indlæsning af input stod valget imellem enten en statemachine opbygget ved hjælp af en DFA eller ved anvendelse af Javas \t{StreamTokenizer}. Javas \t{StreamTokenizer} var utrolig letanvendelig. Den kunne bl.a. automatisk genkende kommentarer, strenge, tal og operatorer. Valget faldt derfor på \t{StreamTokenizer} klassen. \t{StreamTokenizer} havde dog en alvorlig mangel; den læste tegnsekvensen ``\t{<=}'' som to tokens, nemlig ``\t{<}'' , ``\t{=}'' og tegnsekvensen ``\t{A.f}'' som ``\t{A}'' , ``\t{.}'' , ``\t{f}''. Samtidig skulle der wrappes funktionalitet omkring, som kunne genkende tokens, der ikke blev understøttet af Qjava compileren (f.eks. ``\t{switch}''), og melde fejl, hvis den mødte ulovlige tegn såsom ``@''. Løsningen blev  klassen \t{Lexer}, der arvede \t{StreamTokenizer}'s funktionalitet, hvor tokengenkendelsen blev udbygget, og hvor advarsler og fejlmeldinger blev implementeret.
+
+
+\subsection{Token klassen}
+Kommunikationen mellem klasserne \t{Lexer} og \t{Parser} sker igennem klassen \t{Token}, hvor hver instans kan indeholde information om præcis et token. Klassen indeholder flere felter, da tokens kan være tekststrenge, tal og tegn. Af hensyn til brugeren, lagres også linien, hvorpå det enkelte token befinder sig i sourcekoden, således hvis senere faser detekterer uregelmæssigheder eller fejl, kan angive hvor problemet er opstået. Klassen er implementeres som følgende
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+class Token
+{
+    int id;
+    int nval;
+    String sval;
+    int lineno;
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+\t{id} feltet indeholder, en for hver token, unik værdi, og angiver dermed hvilken type, det pågældende token er. Er token'et en \verb£VAL_INT£, indeholder \t{nval}, tal-værdien. På samme vis for strenge og \t{sval}.
+
+Da der hverken er konstruktør- eller accesor- metoder i klassen, er det op til klasserne \t{Lexer} og \t{Parser} at læse og skrive de rigtige felter. Man kunne argumentere, at denne implementation ikke følger kriterierne for implementering \kref{ss:projektkriterier}, omvendt skal man passe på med blindt at anvende ``det store objektorienterede apparat'' i alle tilfælde. \t{Token} klassens design blev valgt udfra, at den skulle være enkel og fleksibel, og dens størrelse og funktion, retfærdiggør ovenstående implementation.
+
+
+
+
+\subsection{TokenNames interface}
+\t{TokenNames} er en konstruktion der gør det muligt at skelne et token fra et andet. Til implementeringen stod valget mellem tre løsninger, der alle diskuteres i det følgende
+
+
+\subsubsection{Løsningsmodel 1}
+Udfra en abstrakt klasse \t{Token} nedarves én klasse for type token, der hver især indeholder de relevante informationer. På den måde sikres det, at alle klasserne er af typen \t{Token} og at hver token ikke indeholder mere eller mindre information end nødvendigt. Løsningen knytter identitet til hver token, i kraft af den type det pågældende token har. Et implementationsskitse er:
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+abstract class Token{ }
+class VAL_INT extends Token{int val; }
+class VAL_String extends Token{String val;}
+class PLUS extends Token{}
+
+
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Modellen er meget tung og skal udbygges med en ny klasse for hver ny token Qjava skal indeholde, som for det lille sprog Qjava allerede er, inkluderer hele 40 klasser.  Javakræver endvidere eksplicit casting der gør programmeringen besværlig, som følgende eksempel, der ikke virker, viser:
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+        .
+        .
+        Token t = lexer.getNextToken();
+        f(t);
+        .
+        .
+    public String f(PLUS t){...}
+    public String f(VAL_INT t){...}
+    public String f(VAL_STRING t){...}
+    .
+    .
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Skulle ovenstående eksempel virke, kunne det se ud som følgende:
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}        .
+        .
+        Token t = lexer.getNextToken();
+        if(t instanceof PLUS)    f((PLUS) t);
+        else
+        if(t instanceof VAL_INT) f((VAL_INT) t);
+        .
+        .
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Der kræves altså en masse besværlige \t{instanceof} kald. Ovenstående viser en situation, hvor anvendelsen af nedarvning ikke er en fordel. Kunne metoden \t{f} flyttes ud i de enkelte token klasser, ville løsningen være langt mere elegant, men ville ske på bekostning af at compilerens faseopdeling nedbrydes.
+
+\subsubsection{Løsningsmodel 2}
+Man kunne argumentere, at sammen med tokens hører deres navne i samme klasse. For at undgå unødig memory forbrug, og for at tilgangen til tokennavnene bliver uniform placeres navnene i et \t{static} scope. Tokenklassen vil tage form som:
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class Token
+{
+    int id;
+    int nval;
+    String sval;
+    int lineno;
+
+    static int PLUS       = 1;
+    static int VAL_INT    = 2;
+    static int VAL_STRING = 3;
+    .
+    .
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Tokennavnene kan dermed tilgås via eksempelvis ``\t{Token.PLUS}''. Det bemærkes, at der refereres direkte ind i klassen uden brug af pointere. Metoden kunne altså naturligt anvendes i f.eks. parser delen, hvor det ikke ville være naturligt at allokere tokens.
+
+
+\subsubsection{Løsningsmodel 3}
+Den sidste løsningsmodel tager udgangspunkt i Javas interface egenskaber. Fordelen ved interfaces er, at de muliggør multibel arv. Ved anvendelse af arv før det er muligt at tilgå tokennavnene, gøres det eksplicit hvilke klasser der gør hvad. Dette er modsat løsningsmodel 2, hvor tokennavnene kan tilgås uden videre. Modellen ser således ud:
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+public interface TokenNames
+{
+    int
+    .
+    .
+    PLUS         = 50,
+    .
+    .
+    VAL_INT      = 172,
+    VAL_STRING   = 173,
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+Ved at anvende (konstante) variable, knyttes der et tokennavn til en unik værdi. Der henvises iøvrigt til den fulde sourcekode i \aref{a:tokennames}.
+
+
+\subsection{Opsummering}
+Klassen \t{Lexer} anvendes til læsning af input, der sendes videre igennem klassen \t{Token}. Til identifikation af tokens anvendes løsningsmodel 3, hvor hver token defineres udfra værdien i \t{id} feltet i \t{Token} klassen, der er fastsat i interfacet \t{TokenNames}.
+
+
+\section{Implementation}
+\subsection{metode \t{getNextToken}}
+Da den udvidede funktionalitet inkluderede ændring i retur-værdien fra \t{int} til \t{Token}, kunne \t{StreamTokenizer}'s \t{nextToken()} metode ikke overskrives. Metodens navn blev derfor til \t{getNextToken()}. Klassens opførsel er skitseret nedenfor samt på \fref{f:lexerfunktionalitet}.
+
+
+\bigskip
+\begin{figure}
+~~~~~~~~~~~~~~\xymatrix@=1.3cm
+{
+*+[F-:<4pt>]{\txt{{\small\t{getNextToken()}}\\\#1}} \ar[rr]|{\txt{ord}}  \ar@/_/[drr]|{\txt{tal, op, keyword\\ ", '}} \ar[dd]|{\txt{\&, $|$,\\ $<$, !,\\ =}}& & *+[F]{\txt{NAME/ID\\afgøres\\\#2}} \ar[d] \\
+&& *+[F=]{\txt{Return\\Token}}  \\
+*+[F]{\txt{Next\\Token\\\#3}} \ar@/_/[urr]|{\txt{\&\&, $||$,\\ $<=$, !=,\\ ==}} \ar[rr]_{\txt{Alle andre\\tilfælde}} & & *+[F]{\txt{Push back\\last read\\\#4}} \ar[u] \\
+}
+\Caption{Figur der viser {\tt getNextToken}'s funktionalitet.}
+\label{f:lexerfunktionalitet}
+\end{figure}
+
+
+\begin{tabular}{lp{10.4cm}}
+\#1 & Næste token læses (t), er t et ord hoppes til (\#2). 
+
+Er t en operator af typen \t{\&, |, <, !} eller \t{=} hoppes til (\#3).
+
+Er t et ikke negativt tal, en operator, et keyword (alle Javas reserverede keywords, med undtagelse af \t{char, int, String}), en tekststreng (omgivet af gåseøjne) eller et bogstav (omgivet af appostroffer), returneres t som et \t{Token}.  \\
+\#2 & I denne fase afgøres, hvorvidt et token er af typen \t{name} eller \t{id}, hvor name er defineret som: \i{name} $\rightarrow$ \i{id} ``.'' \i{id} \{ ``.'' \i{id} \} skrevet på EBNF. \i{id} er defineret som en tegnsekvens der er forskellig fra Javas reserverede keywords med undtagelse af \t{char, int, String}. Dette gøres ved at læse et og eventuelt flere tokens. Efter undersøgelsen returneres resultatet som en \t{Token}.\\
+\#3 & Næste token indlæses: er tokenet en operator af typen \t{\&, |, <, !} eller \t{=} returneres et \t{Token} ellers hoppes til \#4. \\
+\#4 & Det sidstlæste token skubbes tilbage i bufferen hvorfra der læses, hvorefter det førstlæste token returneres.\\
+\end{tabular}
+
+
+\begin{quote}
+``\textit{The tokenizer for Java is a ``greedy tokenizer.'' It grabs as many characters as it can to build up the next token, not caring if this creates an invalid sequence of tokens. So because {\tt ++} is longer than {\tt +}, the expresion {\tt j = i+++++i;} (...) is interpreted as (...) {\tt j = i++ ++ +i}}''~\cite[side 91]{arnold}.
+\end{quote}
+
+Som det kan læses udfra figuren og/eller ovenstående beskrivelse, er slutresultatet af Qjava compilerens lexer identisk med JDK.
+
+
+\subsection{metode \t{pushBack}}
+Den anden public metode der findes i \t{Lexer} er \t{void pushBack()} metoden der sørger for, at sidste genkendte token ``skubbes tilbage'', således næste kald af\\ \t{getNextToken()} vil returnere det sidst genkendte token. Metoden anvendes i situationer, hvor det er nødvendigt for parseren at kende næste token i rækken, for at kunne afgøre i hvilken kontekst det nuværende token står i.
+
+Sourcekoden for \t{Lexer} findes i \aref{a:lexer}, mens henholdsvis \t{Token} og \t{TokenNames} findes i \aref{a:token} og i \aref{a:tokennames}.
+

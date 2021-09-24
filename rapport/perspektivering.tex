@@ -1,0 +1,104 @@
+\chapter{Perspektivering}
+\label{c:perspektivering}
+
+Perspektiveringen omhandler følgende tre emner
+\begin{itemize}
+\item[$\circlearrowright$] Eksempler på bedre kodegenerering, sektion \xref{s:per_kodegenerering}
+\item[$\circlearrowright$] Hvorledes Qjava kunne udvides, sektion \xref{s:per_sprogudvidelse}
+\item[$\circlearrowright$] Erfaringer med kørsler, hvor tesen fra indledningen diskuteres, sektion \xref{s:per_erfaringer}
+\end{itemize}
+\OverviewLine
+
+\bigskip
+I dette kapitel diskuteres forskellige forbedringsmuligheder for forholdsmæssigt lette ting at implementere. Kapitlet skal ikke forstås som ``Qjava compileren BURDE indeholde alle disse forslag, og fordi den ikke gør det er den dårlig''. Kapitlet prøver at perspektivere elementer i Java, der kan implementeres inden for overskuelig tid. Det faktum, at forslagene er let-implementérbare, bør istedet være et argument for, at den realisering der har fundet sted, ikke binder sig snævert til den givne kravsspecifikation, men at den kan være fundament for mere omfangsrige versioner af Qjava.
+
+\section{Kodegenerering} 
+\label{s:per_kodegenerering}
+I dette afsnit foreslås forbedringer med hensyn til koden der genereres. 
+
+\subsection{32 bit}
+Fra Intel 80386 processoren kan registrene indeholde 32 bit fremfor 16. Antallet og navnene på registrene er fortsat bevaret (pånær et ``e'' foran registernavnene). Registret \t{ax} tilgås altså \t{eax} hvis alle 32 bit ønskes tilgået.
+
+Foruden denne minimale ændring skal der højst sandsynligt genereres en lidt anderledes opstartskode, samt registrenes funktionalitet skal undersøges.
+
+En 32 bit compiler vil betyde, at talområdet udvides til $\pm 2^{31} = \pm 2,1 \cdot 10^9$. Samtidig med programmerne vil kunne behandle større tal, vil referencer kunne referere over et større område, og dermed tillade en større hob. 
+
+
+
+\subsection{Statisk garbage collection}
+En ``fuldblods'' garbage collection er en stor opgave at implementere. Langt mere overskueligt er det, at lave en statisk garbage collection. Det vil sige, at compileren fjerner det øverste element på hoben, hvis den ved, at instansen ikke længere anvendes.
+
+Dette vil reducere lagerforbruget specielt for \t{Integer.toString()} metoden, når den anvendes i forbindelse med udskrift. Det næste eksempel viser et tilfælde hvor hoben hurtigt fyldes.
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+int i;
+.
+.
+i = 0;
+while(i < 10000)
+{
+    System.out.print( Integer.toString(i) );
+    .
+    .
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+\t{i} er måske over-forsimplet, men i mange beregningsmæssige sammenhænge udskrives mellemresultater og resultater til skærmen, hvorefter de igennem resten af programmet udelukkende anvendes som tal.
+
+I forbindelse med \t{System.out.print(Integer.toString(i))} kald, kunne compileren bagefter kalde en deallokeringsmetode. Denne kunne udformes som en standardfunktion ved navn \t{denew} som blot tæller \t{hobptr} ned med værdien i register cx, altså det omvendte af \t{new}.
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+denew PROC
+    sub  hobptr, cx
+    ret
+denew ENDP
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+ 
+\subsection{Lager}
+Istedet for hoben indeholdt repræsentationer af instanser af objekter, kunne den istedet indeholde adresserne på hvor dataene befinder sig i memory, Hoben bliver altså en reference-tabel over objekternes 'this'. På den måde undgås anvendelsen en fast mængde lager. Før implementationen for alvor kan være en forbedrign bør hele compileren køre i 32 bit, så en større del af lageret kan nås.
+
+
+
+
+
+\section{Sprogudvidelse}
+\label{s:per_sprogudvidelse}
+Qjava kunne på en række udvides så det bliver mere modulært og objektorienteret.
+
+\subsection{Access modifiers}
+For indkapsling af kode kan blive en realitet, mangler der Qjava muligheden for at angive hvem der må tilgå et objekts felter og metoder. Implementeringen af  \t{public, private, final} kan foregå ved, at der til hver funktion og variabel knyttes et flag der angiver adgangen til denne.  Dette kunne let administreres i symboltabellen, der blot skal udvide sin \t{Symbol} klasse, og hvor symboltabellens metoder skal udvides med de nye flag. Flagene kunne repræsenteres ved bit. Første bit kunne angive true/false \t{final}, anden bit true/false \t{private} og tredie bit true/false \t{public}. Flaget 5 (\t{00000000$\:$00000101b}) angiver dermed \t{public final}.
+
+Det eneste der skal ændres er kodegenereringen for metodekald, der nu først slår op i symboltabellen før et eventuelt metodekald genereres.
+
+
+
+
+\subsection{Konstruktør}
+Konstruktører skal genereres som alle andre metoder til klasser, med det forbehold, at specificeres ingen konstruktør i en klasse genereres automatisk en tom procedure i assemblerkoden automatisk. Konstruktøren skal automatisk \t{call}'es efterfølgende genereringen af \t{new} kald.
+
+Ønskes \i{vardef} udbygget til også at acceptere værditildeling, vil implementationen af konstruktøren forsimple dette problem drastisk. Koden for værditildelingen skal blot placeres der hvor konstruktørens kode placeres. 
+
+
+\subsection{\t{Static} variable og metoder}
+Ved implementationen af \t{static} klassevariable og metoder kunne et flag til hver funktion/variabel anvendes til angivelse af true/false \t{static}. Hvis både access modifiers og \t{static} implementeres samtidig kunne true/false \t{static} placeres på 6 bit (således 2 bit er reserveret til henholdsvis \t{package} og \t{protected}, så accessmodifiers ligger i en samlet klump i flag-variablen).
+
+Klassevariable (\t{static} variable) kan ikke placeres på hoben, da de eksisterer udenfor instanser af klassen. Der er derfor ingen naturlige steder en reference til placeringen på hoben kan lagres. Til gengæld har klassevariable samme egenskaber som globale variable i sprog som C/C++. De kan derfor placeres i DATA segmentet på følgende vis\\
+\verb£    Klassenavn.variabelnavn  DW 0£
+
+Hvis der under kodegenereringen tilgås en variabel med \t{static} bitten tændt, kan værdien af variablen tilgås med \t{variabelnavn}, f.eks. \t{mov ax, variabelnavn}. Grunden til der står ``variabelnavn'' og klassenavnet er udeladt skyldet, at klassenavn og variabelnavn under den leksikalske analyse er genkendt som et \i{name} og derfor er et ord. Ved at navngive variablen med ``.'' i DATA segmentet, kan variabelnavnet anvendes direkte under kodegenereringen uden en navnekonvertering skal finde sted.
+
+For metoder er implementeringen endnu lettere. Metoder genereres allerede automatisk i kodegenereringsfasen. Det eneste der skal implementeres er kontrol ved funktionskald, som hvis \t{static} bitten er tændt konverterer alle ``.'' til \verb£_£ i navnet på metodekaldet, og ellers udfører funktionskaldet som alle andre metodekald.
+
+
+\section{Erfaringer fra kørsel}
+\label{s:per_erfaringer}
+Udfra erfaringerne med kørsler at dømme, må tesen fremlagt i indledningen konkluderes at være falsk. Omend der ikke skulle voldsomme optimeringer ind i billedet før native koden var hurtigere, er Java virtual machines idag så langt fremme med runtime compilering, at det ligger inden for rækkevidden af native kode. 
+
+Det vides ikke om JDK i realiteten compilerede primtalsprogrammet én gang og udførte det fra en ``optimerings cache'' lignende ting eller ej. Men faktum er, at hvad enten JDK udfører ved små programmer, er det mere effektivt end uoptimeret genereret assemblerkode. Fremtiden for Qjava compileren kan idag derfor ligge på et meget lille sted! Havde Qjava compileren været konstrueret for få år tilbage, ja så sent som i 1998, ville resultaterne ganske sikkert være helt anderledes. Inden for årene 1997--1999, er der sket en mangedobling i afviklingshastigheden af Java programmer.                     
+
+Bytecode giver ydermere mulighed for ting der er meget svært realiserbare i assembler. I Java giver det mening, at udføre et program, der ikke ``kender sig selv'', forstået på den måde, at de  funktionaliteter der ikke forefindes i den aktuelle kode kan hentes fra ekstern kilde f.eks. harddisk eller internettet. Et tekstbehandlingsprogram kunne derfor udelukkende bestå af en menu og opbygning af et vindue. De restende funktionaliteter kan så hentes når de skal anvendes. På denne måde kan store programmer opnå hurtigere opstartstid end de samme programmer skrevet i assembler! Den sidste store forskel der hér skal nævnes er bytecodes egenskab ved at være kørbar på alle større platforme vel og mærke uden ændringer finder sted i koden. Dette er en umulighed for assembler, for selvom assembleren genereres så generel som muligt vil den altid være stærkt knyttet til den pågældende arkitektur.
+
+Vel nok især det sidste punkt gør, at flere nye programmeringssprog ikke skabes med assembler og linker, men istedet producerer bytecode. Udviklerne har på denne måde for det første sparet en masse arbejde der skulle gå til udvikling af assembler, linker og debug'er, men vigtigere, antallet af potentielle bruger har stort set nået sit maksimum fra starten. Det kan tænkes,  at bytecode-teknologien kan vælte Microsofts monopolagtige possition inden for styresystemer, da valg af styresystem om få år sikkert ingen betydning har for udbud af software. Paradoksalt er det, at dette ligeledes nivellerer  betydning af hvilket programmeringssprog der anvendes --- sålænge dette sprog genererer bytecode. Det kan derfor, ihvertfald i princippet, tænkes, at et nyt programmeringssprog i fremtiden, formår at blive mere anvendt end Java selv på grund af ``Write once, run anywhere''-idéen.
+

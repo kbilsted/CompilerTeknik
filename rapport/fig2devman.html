@@ -1,0 +1,548 @@
+<HTML>
+<HEAD>
+<TITLE>fig2dev</TITLE>
+</HEAD>
+<BODY><UL>
+<H1>fig2dev</H1>
+<HR>
+<PRE>
+<!-- Manpage converted by man2html 3.0.1 -->
+
+</PRE>
+<H2>NAME</H2><PRE>
+     fig2dev - translates Fig code to various graphics languages
+
+
+</PRE>
+<H2>SYNOPSIS</H2><PRE>
+     fig2dev -L <I>language</I> [ -m <I>mag</I> ] [ -f <I>font</I> ] [ -s  <I>fsize</I>  ]  [
+     <I>other</I> <I>options</I> ] [ <I>fig</I>-<I>file</I> [ <I>out</I>-<I>file</I> ] ]
+
+
+</PRE>
+<H2>DESCRIPTION</H2><PRE>
+     <I>Fig2dev</I> translates fig code in the named <I>fig</I>-<I>file</I>  into  the
+     specified  graphics  <I>language</I> and puts them in <I>out</I>-<I>file</I>. The
+     default <I>fig</I>-<I>file</I> and <I>out</I>-<I>file</I> are standard input  and  stan-
+     dard output, respectively
+
+     Fig (Facility for Interactive Generation of  figures)  is  a
+     screen-oriented tool which allows the user to draw and mani-
+     pulate objects interactively.  Various versions of  Fig  run
+     under the Suntools/Sunview window environment and under ver-
+     sion 11 of the X Windows System.  Fig2dev is compatible with
+     Fig versions 1.3, 1.4, 2.0, 2.1, 3.0, 3.1 and 3.2.
+
+
+</PRE>
+<H2>OPTIONS</H2><PRE>
+     -L   Set the output graphics language.  Valid languages  are
+          acad  (AutoCad  slide  format), box, epic, eepic, eepi-
+          cemu, gif, ibmgl, jpeg, latex, mf (METAFONT), pcx, pic,
+          pictex,  png, ppm, ps, pstex, pstex_t, textyl, tiff, tk
+          (tcl/tk), tpic, xbm and xpm.
+
+          Note that <I>dvips</I> and <I>xdvi</I> must be compiled with the tpic
+          support (-DTPIC) for epic, eepic and tpic to work.
+
+     -h   Print help message with  all  options  for  all  output
+          languages.
+
+     -m   Set the magnification at which the figure  is  rendered
+          to <I>mag</I>. The default is 1.0.
+
+     -f   Set the default font used for text objects to <I>font</I>. The
+          default  is Roman; the format of this option depends on
+          the graphics <I>language</I> in use.  In TeX-based  languages,
+          the  font  is the base of the name given in lfonts.tex,
+          for instance "cmr" for Roman, or "tt" for teletype.  In
+          PostScript, it is any font name known to the printer or
+          interpreter.
+
+     -s   Set the default font size (in points) for text  objects
+          to  <I>fsize</I>. The default is 11*mag, and thus is scaled by
+          the -m option.  If there is  no  scaling,  the  default
+          font is eleven point Roman."
+
+     -V   Print the program version number only.
+
+     <I>other</I> <I>options</I>
+          The other options are specific to the choice of  graph-
+          ics <I>language</I>, as described below.
+
+
+</PRE>
+<H2>EPIC OPTIONS</H2><PRE>
+     EPIC is an enhancement to LaTeX picture drawing environment.
+     It  was  developed  by Sunil Podar of Department of Computer
+     Science in S.U.N.Y at Stony Brook.
+
+     EEPIC is an extension to  EPIC  and  LaTeX  picture  drawing
+     environment  which  uses tpic specials as a graphics mechan-
+     ism.  It was written by Conrad Kwok of Division of  Computer
+     Science at University of California, Davis.
+
+     EEPIC-EMU is an EEPIC emulation package which does  not  use
+     tpic specials.
+
+     -A   Scale arrowheads by <I>factor</I>. The  width  and  height  of
+          arrowheads  is <I>divided</I> by this factor.  This is because
+          <I>EPIC</I> arrowheads are normally about double the  size  of
+          <I>TeX</I> arrowheads.
+
+     -l   Use "\thicklines" when width of the line is wider  than
+          <I>lwidth</I>. The default is 2.
+
+     -v   Include comments in the output file.
+
+     -P   Generate a complete LaTeX file.  In  other  words,  the
+          output  file  can  be  formatted  without requiring any
+          changes. The additional text inserted in the  beginning
+          and  at the end of the file is controlled by the confi-
+          guration parameter "Preamble" and "Postamble".
+
+     -S   Set the scale to which the figure  is  rendered.   This
+          option automatically sets the <I>magnification</I> and size to
+          <I>scale</I> / 12 and <I>scale</I> respectively.
+
+     -W   Enable variable line width.  By default, only two  line
+          widths are available: The normal line width (hinlines),
+          and thick lines (hicklines), if a line  width  of  more
+          than one is selected in xfig.
+
+     -w   Disable variable line width. Only "\thicklines"  and/or
+          "\thinlines"  commands  will be generated in the output
+          file.
+
+     When variable line width  option  is  enabled,  "\thinlines"
+     command  is  still used when line width is less than <I>LineTh-</I>
+     <I>ick</I>. One potential problem is that the width of "\thinlines"
+     is  0.4pt  but  the  resolution of Fig is 1/80 inch (approx.
+     1pt). If <I>LineThick</I> is set to 2, normal lines will  be  drawn
+     in  0.4pt wide lines but the next line width is already 2pt.
+     One possible solution is to set <I>LineThick</I> to 1 and  set  the
+     width  of  the  those  lines you want to be drawn in "\thin-
+     lines"  to 0.
+
+     Due  to  this  problem,  Variable  line  width  <I>VarWidth</I>  is
+     defaulted to be false.
+
+
+</PRE>
+<H2>IBM-GL OPTIONS</H2><PRE>
+     IBM-GL (International Business Machines  Graphics  Language)
+     is   compatible   with   HP-GL   (Hewlett-Packard   Graphics
+     Language).
+
+     -a   Select ISO A4 (ANSI A) paper size  if  the  default  is
+          ANSI A (ISO A4) paper size.
+
+     -c   Generate instructions for an  IBM  6180  Color  Plotter
+          with  (without)  an  IBM Graphics Enhancement Cartridge
+          (IBM-GEC).
+
+     -d   Restrict plotting to a rectangular area of the  plotter
+          paper  which  has a lower left hand corner at (<I>xll</I>,<I>yll</I>)
+          and a upper right hand corner at  (<I>xur</I>,<I>yur</I>).  All  four
+          numbers are in inches and follow -d in a comma-sparated
+          list - <I>xll</I>,<I>yll</I>,<I>xur</I>,<I>yur</I> - with no spaces between them.
+
+     -f   Load text character specifications from  the  table  in
+          the  <I>fonts</I>  file.  The table must have 36 entries - one
+          for each font plus a default.  Each entry consists of 5
+          numbers which specify the 1.) standard character set (0
+          - 4, 6 - 9, 30 - 39), 2.) alternate character set (0  -
+          4,  6  -  9,  30  -  39),  3.)  character  slant  angle
+          (degrees), 4.) character width  scale  factor  and  5.)
+          character height scale factor.
+
+     -l   Load area fill line patterns from the table in the <I>pat-</I>
+          <I>terns</I>  file.   The table must have 21 entries - one for
+          each of the area fill patterns.  Each entry consists of
+          5  numbers  which  specify the 1.) pattern number (-1 -
+          6), 2.) pattern length (inches), 3.) fill type (1 - 5),
+          4.) fill spacing (inches) and 5.) fill angle (degrees).
+
+     -m   The magnification may appear as the first element in  a
+          comma separated list - <I>mag</I>,<I>x0</I>,<I>y0</I> - where the second and
+          third parameters specify an offset in inches.
+
+     -p   Load plotter pen specifications from the table  in  the
+          <I>pens</I>  file.   The  table  must have 9 entries - one for
+          each color plus a default.  Each entry  consists  of  2
+          numbers  which  specify  the 1.) pen number (1 - 8) and
+          2.) pen thickness (millimeters).
+
+     -P   Rotate the figure to  portrait  mode.  The  default  is
+          landscape mode.
+
+     -S   Set the pen speed to <I>speed</I> (centimeters/second).
+
+     -v   Plot the figure upside-down in portrait mode  or  back-
+          wards  in  landscape mode.  This allows you to write on
+          the top surface of overhead transparencies without dis-
+          turbing the plotter ink on the bottom surface.
+
+     Fig2dev may be installed  with  either  ANSI  A  or  ISO  A4
+     default  paper  size.   The  -a option selects the alternate
+     paper size.  Fig2dev does  not  fill  closed  splines.   The
+     IBM-GEC  is required to fill other polygons.  Fig2dev may be
+     installed for plotters with or without the IBM-GEC.  The  -c
+     option selects the alternate instruction set.
+
+
+</PRE>
+<H2>LATEX OPTIONS</H2><PRE>
+     -l   Sets the threshold between LaTeX thin and  thick  lines
+          to  <I>lwidth</I>  pixels.   LaTeX supports only two different
+          line width: \thinlines and \thicklines.  Lines of width
+          greater  than  <I>lwidth</I>  pixels are drawn as \thicklines.
+          Also affects the size of dots  in  dotted  line  style.
+          The default is 1.
+
+     -d   Set a separate magnification for  the  length  of  line
+          dashes to <I>dmag</I>.
+
+     -v   Verbose mode.
+
+     LaTeX cannot accurately represent all the  graphics  objects
+     which  can  be  described by Fig.  For example, the possible
+     slopes which lines may have are limited.  Some objects, such
+     as spline curves, cannot be drawn at all.  Fig2latex chooses
+     the closest possible line slope, and prints  error  messages
+     when objects cannot be drawn accurately
+
+
+</PRE>
+<H2>PIC OPTIONS</H2><PRE>
+     -p   Enables the use of certain  PIC  extensions  which  are
+          known  to  work  with  the groff package; compatibility
+          with DWB PIC is unknown.   The  extensions  enabled  by
+          each option are:
+
+           arc     Allow ARC_BOX i.e. use rounded corners
+           line    Use the 'line_thickness' value
+           fill    Allow ellipses to be filled
+           all     Use all of the above
+           psfont  Don't convert Postscript fonts generic type
+                   (useful for files going to be Ditroff'ed for
+                   and printed on PS printer). DWB-compatible.
+           allps   Use all of the above (i.e. "all" + "psfont")
+
+
+</PRE>
+<H2>PICTEX OUTPUT</H2><PRE>
+     In order to include PiCTeX pictures into a document,  it  is
+     necessary to load the PiCTeX macros.
+
+     PiCTeX uses TeX  integer  register  arithmetic  to  generate
+     curves,  and  so  it  is  very slow.  PiCTeX draws curves by
+     \put-ing the <I>psymbol</I> repeatedly, and  so  requires  a  large
+     amount  of  TeX's  internal  memory, and generates large DVI
+     files.  The size of TeX's memory limits the number  of  plot
+     symbols in a picture.  As a result, it is best to use PiCTeX
+     to generate small pictures.
+
+
+</PRE>
+<H2>POSTSCRIPT OPTIONS</H2><PRE>
+     With PostScript, Fig can be used to  create  large  posters.
+     The  figure will be created by printing multiple pages which
+     can be glued together.  Simply specify the -M option to pro-
+     duce a multi-page output.  Due to memory limitations of most
+     laser printers, the figure should not  be  too  complicated.
+     Great for text with very big letters.
+
+     Text can now include various ISO-character codes above 0x7f,
+     which  is  useful  for  language  specific  characters to be
+     printed directly.  Not all ISO-characters are implemented.
+
+     Color support: Colored objects created by Fig can be printed
+     on a color postscript printer. There are 32 standard colors:
+     black, yellow, white, gold, five shades of blue, four shades
+     of  green,  four  shades  of  cyan, four shades of red, five
+     shades of magenta, four shades of brown, and four shades  of
+     pink.   In  addition there may be user-defined colors in the
+     file.  See the xfig FORMAT3.2 file  for  the  definition  of
+     these colors.  On a monochrome printer, colored objects will
+     be mapped into different grayscales by the printer.   Filled
+     objects  are  printed  using  the given area fill and color.
+     There are 21 "shades" going from black to full saturation of
+     the fill color, and 21 more "tints" from full saturation + 1
+     to white.  In  addition,  there  are  16  patterns  such  as
+     bricks, diagonal lines, crosshatch, etc.
+
+     -c   option centers the figure on the page.   The  centering
+          may  not be accurate if there are texts in the <I>fig</I>_<I>file</I>
+          that extends too far to the right of other objects.
+
+     -e   option puts the figure against the edge (not  centered)
+          of the page.
+
+     -l dummy_arg
+          Generate figure in landscape mode.  The dummy  argument
+          is  ignored,  but  must  appear on the command line for
+          reasons of compatibility.  This  option  will  override
+          the  orientation  specification  in  the file (for file
+          versions 3.0 and higher).
+          This option is only  honored  when  not  using  the  -P
+          option  (add  showpage).   This  is  because the figure
+          doesn't need to be rotated when generating Encapsulated
+          PostScript (EPS).
+
+     -M   Generate multiple pages if figure exceeds paper size.
+
+     -p dummy_arg
+          Generate figure in portrait mode.  The  dummy  argument
+          is  ignored,  but  must  appear on the command line for
+          reasons of compatibility.  This  option  will  override
+          the  orientation  specification  in  the file (for file
+          versions 3.0 and higher).  This is the default for  Fig
+          files of version 2.1 or lower.
+
+     -P   indicates that the figure describes a full  page  which
+          will  not  necessarily be inserted into a document, but
+          can be sent directly to a  PS  printer.   This  ensures
+          that  a  showpage command is inserted at the end of the
+          figure.
+
+     -n name
+          Set the Title part of the PostScript  output  to  <I>name</I>.
+          This  is  useful  when  the input to <I>fig2dev</I> comes from
+          standard input.
+
+     -x offset
+          shift the figure in the X  direction  by  <I>offset</I>  units
+          (1/72 inch).  A negative value shifts the figure to the
+          left and a positive value to the right.
+
+     -y offset
+          shift the figure in the Y  direction  by  <I>offset</I>  units
+          (1/72 inch).  A negative value shifts the figure up and
+          a positive value down.
+
+     -z papersize
+          Sets the papersize. Available paper sizes are:
+              "Letter" (8.5" x 11" also "A"),
+              "Legal" (11" x 14" also "A")
+              "Ledger" (11" x 17"),
+              "Tabloid" (17" x 11", really Ledger in Landscape mode),
+              "A" (8.5" x 11" also "Letter"),
+              "B" (11" x 17" also "Ledger"),
+              "C" (17" x 22"),
+              "D" (22" x 34"),
+              "E" (34" x 44"),
+              "A4" (21  cm x  29.7cm),
+              "A3" (29.7cm x  42  cm),
+              "A2" (42  cm x  59.4cm),
+              "A1" (59.4cm x  84.1cm),
+              "A0" (84.1cm x 118.9cm),
+              and "B5" (18.2cm x 25.7cm).
+
+
+</PRE>
+<H2>PSTEX OPTIONS</H2><PRE>
+     The pstex language is a variant of ps which suppresses  for-
+     matted (special) text.  The pstex_t language has the comple-
+     mentary behavior: it generates only LaTeX commands necessary
+     to position special text, and to overlay the PostScript file
+     generated using pstex. These two drivers can be used to gen-
+     erate  a figure which combines the flexibility of PostScript
+     graphics with LaTeX text formatting of special text.
+
+     -n name
+          sets the Title part of the PostScript output  to  <I>name</I>.
+          This  is  useful  when  the input to <I>fig2dev</I> comes from
+          standard input.
+
+     -p file
+          specifies the name of the PostScript file to  be  over-
+          laid.   If not set or its value is null then no PS file
+          will be inserted.
+
+
+</PRE>
+<H2>TK OPTIONS</H2><PRE>
+     -l dummy_arg
+          Generate figure in landscape mode.  The dummy  argument
+          is  ignored,  but  must  appear on the command line for
+          reasons of compatibility.  This  option  will  override
+          the  orientation  specification  in  the file (for file
+          versions 3.0 and higher).
+
+     -p dummy_arg
+          Generate figure in portrait mode.  The  dummy  argument
+          is  ignored,  but  must  appear on the command line for
+          reasons of compatibility.  This  option  will  override
+          the  orientation  specification  in  the file (for file
+          versions 3.0 and higher).  This is the default for  Fig
+          files of version 2.1 or lower.
+
+     -P   Generate canvas of full page size instead of using  the
+          bounding box of the figure's objects. The default is to
+          use only the bounding box.
+
+     -z papersize
+          Sets the papersize.  See  the  POSTSCRIPT  OPTIONS  for
+          available  paper  sizes.  This is only used when the -P
+          option (use full page) is used.
+
+
+</PRE>
+<H2>TEXTYL OPTIONS</H2><PRE>
+     There are no TeXtyl-specific options.
+
+
+</PRE>
+<H2>METAFONT OPTIONS</H2><PRE>
+     <I>fig2dev</I> scales the figure by 1/8 before generating  METAFONT
+     code.   The magnification can be further changed with the -m
+     option or by giving magnification options to mf.
+
+     In order to process the generated METAFONT code,  the  mfpic
+     macros  must  be installed where mf can find them. The mfpic
+     macro package is available at any CTAN cite under  the  sub-
+     directory: graphics/mfpic
+
+     -C code
+          specifies the starting METAFONT font code. The  default
+          is 32.
+
+     -n name
+          specifies the name to use in the output file.
+
+     -p pen_magnification
+          specifies how much the line width should  be  magnified
+          compared to the original figure. The default is 1.
+
+     -t top
+          specifies the top of the whole coordinate  system.  The
+          default is ypos.
+
+     -x xneg
+          specifies the minimum x coordinate value of the  figure
+          (inches). The default is 0.
+
+     -y yneg
+          specifies the minumum y coordinate value of the  figure
+          (inches). The default is 0.
+
+     -X xpos
+          specifies the maximum x coordinate value of the  figure
+          (inches). The default is 8.
+
+     -Y ypos
+          specifies the maximum y coordinate value of the  figure
+          (inches). The default is 8.
+
+
+</PRE>
+<H2>JPEG OPTIONS</H2><PRE>
+     -q image_quality
+          use the integer value <I>image</I>_<I>quality</I> for the JPEG "Qual-
+          ity" factor.  Valid values are 0-100.
+
+
+</PRE>
+<H2>GIF OPTIONS</H2><PRE>
+     -t color
+          Use <I>color</I> for the transparent color in  the  GIF  file.
+          This  must  be  specified  as  a  six-digit hexadecimal
+          RGBvalue with the # sign, e.g. #ff0000 (Red).
+
+
+</PRE>
+<H2>TPIC OPTIONS</H2><PRE>
+     There are no tpic-specific options.
+
+
+</PRE>
+<H2>SEE ALSO</H2><PRE>
+     [x]<B><A HREF="/cgi-bin/man.cgi?section=1&topic=fig">fig(1)</A></B>, <B><A HREF="/cgi-bin/man.cgi?section=1&topic=pic">pic(1)</A></B> <B><A HREF="/cgi-bin/man.cgi?section=1&topic=pic2fig">pic2fig(1)</A></B>, <B><A HREF="/cgi-bin/man.cgi?section=1&topic=transfig">transfig(1)</A></B>
+
+
+</PRE>
+<H2>BUGS and RESTRICTIONS</H2><PRE>
+     Please send bug reports, fixes, new features etc. to:
+     xfig-bugs@epb1.lbl.gov (Brian V. Smith)
+
+     Arc-boxes are not supported for the tk output language,  and
+     only  X  bitmap pictures are supported because of the canvas
+     limitation in tk.
+
+     Picture objects are not scaled with the magnification factor
+     for tk output.
+
+     Because tk scales canvas items according to  the  X  display
+     resolution,  polygons, lines, etc. may be scaled differently
+     than imported pictures (bitmaps) which aren't scaled at all.
+
+     Rotated text is only supported in  the  IBM-GL  (HP/GL)  and
+     PostScript (including eps) languages.
+
+
+</PRE>
+<H2>COPYRIGHT</H2><PRE>
+     Copyright (c) 1985 Supoj Sutantavibul
+     Copyright (c) 1991 Micah Beck
+
+     Permission to use, copy, modify, distribute, and  sell  this
+     software  and  its  documentation  for any purpose is hereby
+     granted without  fee,  provided  that  the  above  copyright
+     notice  appear  in  all  copies and that both that copyright
+     notice and this permission notice appear in supporting docu-
+     mentation.  The  authors  make  no representations about the
+     suitability of this software for any purpose.   It  is  pro-
+     vided "as is" without express or implied warranty.
+
+     THE AUTHORS DISCLAIM ALL  WARRANTIES  WITH  REGARD  TO  THIS
+     SOFTWARE,  INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABIL-
+     ITY AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR
+     ANY  SPECIAL,  INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAM-
+     AGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+     WHETHER  IN  AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TOR-
+     TIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH  THE  USE
+     OR PERFORMANCE OF THIS SOFTWARE.
+
+
+</PRE>
+<H2>AUTHORS</H2><PRE>
+     Micah Beck
+     Cornell University
+     Sept 28 1990
+
+     and Frank Schmuck (then of Cornell University)
+     and Conrad Kwok (then of U.C. Davis).
+
+     drivers contributed by
+     Jose Alberto Fernandez R. (U. of Maryland)
+     and Gary Beihl (MCC)
+
+     Color support, ISO-character encoding and poster support by
+     Herbert Bauer (heb@regent.e-technik.tu-muenchen.de)
+
+     Modified from f2p (fig to PIC), by the author of Fig
+     Supoj Sutanthavibul (supoj@sally.utexas.edu)
+     University of Texas at Austin.
+
+     MetaFont driver by
+     Anthony Starks (ajs@merck.com)
+
+     X-splines code by
+     Carole Blanc (blanc@labri.u-bordeaux.fr)
+     Christophe Schlick (schlick@labri.u-bordeaux.fr)
+     The initial implementation was done by C. Feuille,  S.  Gro-
+     bois,  L.  Maziere  and  L.  Minihot  as  a student practice
+     (Universite Bordeaux, France).  The tk  driver  was  written
+     by:
+     Mike Markowski (mm@udel.edu) with a little touch-up by Brian
+     Smith
+
+</PRE>
+<HR>
+<ADDRESS>
+Man(1) output converted with
+<a href="http://www.oac.uci.edu/indiv/ehood/man2html.html">man2html</a>
+</ADDRESS>
+</UL></BODY>
+</HTML>

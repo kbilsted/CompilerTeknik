@@ -1,0 +1,248 @@
+\chapter{Compilerens struktur}
+\label{c:compilerstruktur}
+Dette kapitel vil omhandle en compilers struktur, og i korte træk opridse hvorledes Qjava compileren er konstrueret.
+
+\begin{itemize}
+\item[$\circlearrowright$] Leksikals analyse, sektion \xref{s:strutur_lex}
+\item[$\circlearrowright$] Parser, sektion \xref{s:struktur_parser}
+\item[$\circlearrowright$] Oversættelse, sektion \xref{s:struktur_oversaettelse}
+\item[$\circlearrowright$] Oversigt over implementationen, sektion \xref{s:struktur_oversigt}
+\end{itemize}
+
+\OverviewLine
+
+\bigskip
+ En compiler ``programmeret efter bogen'' gennemgår følgende stadier:
+\medskip
+
+\begin{figure}[!h]
+\begin{center}
+~~\xymatrix
+{
+*+[F-:<4pt>]{\txt{Sprog A}} \ar[d] \\
+\XYBOX{Lexer} \ar[r] & \XYBOX{Parser} \ar[r] & *+[F--]{\txt{Semantik}} \ar[r] & \XYBOX{Kodegenerering} \ar[r] & *+[F--]{\txt{Optimering}} \ar[d] \\
+&&&&*+[F=]{\txt{Sprog B}}  \\
+}
+\end{center}
+\Caption{Oversættelse fra kode A til kode B (en compilers indre funktionalitet).}
+\end{figure}
+
+Figuren skal læses som programkode skrevet i sproget A, der bliver oversat via en compiler til programkode i sproget B. Grunden til ``semantik'' er stiplet er, at semantik kontrollen i Qjava compileren er meget begrænset, hvorfor der ikke er tale om en reel kontrolfase. ``optimering'' er ligeledes stiplet, men er ikke implementeret i Qjava compileren.
+
+Generelt søger man at opdele oversættelsen i flere faser med hver sin simple funktionalitet, da dette drastisk mindsker kompleksiteten af opgaverne der skal løses, og dermed også sandsynligheden for fejl. Compileren gøres også mere portabel, da der ved en portering til en anden platform, let kan lokaliseres og udskiftes  moduler, der ikke er kompatible med den pågældende platform \cite[side 84--85]{aho}.
+
+
+
+\section{Leksikalsk analyse}
+\label{s:strutur_lex}
+Leksikalsk analyse (ofte forkortet til ``en lexer'') er compilerens første stadie, hvor indlæsningen finder sted. Under indlæsningen oversættes inddata til intern repræsentation, mens det søges at finde leksikaler, som kaldes tokens. Hver token er en selvstændig enhed, som f.eks. tal, ord og andre tegn. Formalisering er en klar fordel, da man på dette stadie én gang for alle eliminerer følgende elementer i oversættelsen:
+
+\begin{description}
+\item[Blanktegn] Blanktegn (space/return/TAB) samt kommentarer er fjernet. Læses det næste token, skal der derfor ikke først ``spoles forbi'' eventuelle tegn.
+
+\item[Entydighed] Nogle tokens er sammensatte af to eller flere tegn, der i sig selv kunne være tokens, eksempelvis \t{<=} eller \t{x2}. Disse regler, og undtagelser, skal der kun tages højde for et sted i programmet.
+\end{description}
+
+ Kort sagt er alt overflødigt skåret fra og input er ikke tvetydigt.
+
+På et implementationsplan vil et token oftest indeholde flere informationer, såsom (``tal'', 12) altså, tokenet er et tal, og tallets værdi er 12. Eller (``streng'', ``hej hans''), altså tokenet er en streng, hvis værdi er ``hej hans''. Andre gange indeholder tokenet kun én information, såsom (``+'') eller (``while''), der blot angiver at tokenet er et plus-tegn eller keywordet ``while''.
+
+Lexeren er videre uddybet i \kref{c:lexer}.
+
+\section{Parser}
+\label{s:struktur_parser}
+Parserens funktion er at kontrollere, om værdierne i strømmen af tokens følger rækkefølgen dikteret af en grammatik. Produktet af denne kontrol er et parsertræ --- en datastruktur, senere faser af compileren kan traversere. Parsertræet kan dog være implicit i den forstand, at der udelukkende returneres hvilke produktioner der er genkendt, altså ``iterationsmodellen'' beskrevet i  sektion \xref{s:overordnetImplementationovervejelser}.
+
+En måde at repræsentere et sådan parsertræ på, er ved et træ der har et blad for hver token, og en knude for hver grammatisk regel gennemgået ved parsningen. Et sådan parsertræ kaldes et konkret parsertræ, da det er en afbildning af den konkrete grammatik. Parsertræet vil dog indeholde en del overflødig information såsom \t{\{, \}, (, ), =} og \t{;}. Information, der er særdeles nyttig ved programmering og til parsning, men som er unødvendig på grund af parsertræets træstruktur. Desuden er det konkrete parsertræ for afhængigt af grammatikken, da det vil indeholde overflødige non-terminaler og grammatik-produktioner der stammer fra fjernelse af venstrerekursion, dobbelttydighed mv. Sådanne størrelser skal holdes på grammatikplan og ikke forplumre de senere faser. Der vælges derfor et abstrakt parsertræ som repræsentationsmodel. Det abstrakte parsertræ er en væsenlig forsimplet udgave af det konkrete parsertræ, hvor en række struktureringer og omskrivningsregler er fjernet, dog på en sådan måde, at meningen er bevaret~\cite[side 98]{appel}.
+
+
+\subsection{Metasproget EBNF}
+Ved at beskrive sit programmeringssprog på et metaplan, i form af en grammatik, opnås en kort og formel beskrivelse af sproget. Til definering af Qjava anvedes EBNF notationsformen, der er en udbyggelse af BNF  ved følgende metasymboler \t{\{\}, [], ()}.
+
+Fordelen ved EBNF fremfor BNF er, at den eliminerer de fleste tomme produktioner (\tom) samt rekursionskald, hvilket skaber overblik. Grammatikken ligger derved tættere på implementationen af parseren --- f.eks. kan \mbox{\t{\{ foobar \}}} implementeres direkte i Java med en while-løkke.
+
+Fordelen ved EBNF ses tydeligt i nedenstående eksempel, hvor et udpluk af en grammatik er skrevet på begge former.
+
+\medskip
+\example
+\begin{EBNFtable}
+\itm{vardef}{\i{id} \i{id} \ii{vardef}{2} \ii{vardef}{3} ``;'' }
+\itm{vardef$_2$}{ = \i{E} $|$ \tom }
+\itm{vardef$_3$}{ , \i{id} \ii{vardef}{2} \ii{vardef}{3} $|$ \tom }
+\multicolumn{3}{l}{På EBNF form reduceres dette til:}\\
+\itm{vardef}{ \i{id} \i{id} $\big[$ ``='' \i{E} $\big]$ \Big\{ ``,'' \i{id} $\big[$ ``='' \i{E} $\big]$ \Big\} ``;'' }
+\end{EBNFtable}
+\medskip
+
+Grammatikken kan være drilsk at opskrive på EBNF, til gengæld har parseren ``skrevet sig selv''. Grammatikken har simpelthen specificeret programmeringssproget så akkurat, at det kan skrives direkte i Java, hvis der anvendes rekursiv nedstigning eller afarter heraf. Da BNF og EBNF notation varierer en smule i litteraturen, gennemgås kort den anvendte notationsform.
+
+\medskip
+\begin{tabular}{lp{9cm}}
+\hline
+\textbf{Symbol}		& \textbf{Beskrivelse}\\
+\hline
+\i{foo}		& Angiver \t{foo} er en syntaks-enhed, altså en non-terminal.\\
+\{foo\}		& Noterer $0\dots n$ antal \t{foo}. \\
+$[$foo$]$	& Noterer 0 eller 1 antal \t{foo}.\\
+(foo$|$bar)	& Noterer enten \t{foo} eller \t{bar}. \\
+$\rightarrow$& Betyder at venstresiden ``defineres som'' højresiden. Især i ældre litteratur anvendes \t{::=} istedet.\\
+$|$			& Skilletegn mellem forskellige produktioner eller definitioner af non-terminalen.\\
+``bar''		& Angiver, at \t{bar} er en terminal (en tegnsekvens), som den fremgår i input.\\
+\hline
+\end{tabular}
+\medskip
+
+
+\subsection{Rekursiv nedstigning}
+Parserens implementering sker ved teknikken rekursiv nedstigning. For hver nonterminal på venstresiden, svarer en metode i parseren med ækvivalent navn og funktionalitet. Produktioner på højresiden svarer til (muligvis rekursive) metodekald. Terminaler svarer til scanning af input. I \kref{c:qjavaspecifikation} udformes grammatikken for Qjava på EBNF, mens \kref{c:parser} beskæftiger sig med implementering af parser og parsertræ.
+
+
+\section{Oversættelse}
+\label{s:struktur_oversaettelse}
+I sidste fase foretages en oversættelse af parsertræet til sprog B. Ofte vil sprog A og sprog B ikke indeholde samme funktionaliteter, hvorfor strukturene i sprog A må repræsenteres på bedst mulig vis i sprog B. For eksempel har assembler slet ikke det samme variabel eller klasse begreb som Java. Et andet men mere trivielt problem er, at Assembler kun accepterer højst to parametre pr. kald, så udtrykket \t{t = 1+2+3+4} skal sættes på formen
+\begin{verbatim}
+    mov t, 1
+    add t, 2
+    add t, 3
+    add t, 4
+\end{verbatim}
+
+Oversættelsen beror på to grundpprincipper nemlig
+
+\begin{itemize}
+\item[$\blacktriangleright$] Sætninger: Kodegenerering af en række sætninger foregår kronologisk, hvor hver sætning kan indeholde kodegenerering, som igen genereres kronologisk. Dette gælder for alle sætninger med undtagelse af while-operatorens ``krop'', nemlig break og generelt for return, da disse skal kende til kode (en label) som findes senere i programmet.
+\item[$\blacktriangleright$] Udtryk: (variable, udregning, mv) er nettoresultatet altid en og kun en ekstra værdi på stakken.
+\end{itemize}
+
+
+\subsection{Assembler}
+``Sprog B'' er valgt til at være Intel 80286 kompatibel assembler, dog har hensigten været at generere så generel assembler som muligt. Det vil sige, der anvendes ikke specielle 80x86 kommandoer, samtidig er anvendelsen af multible hukommelses-segmenter og andre DOS     specifikke ting  søgt elimineret. \tref{t:asmref} forklarer de mest anvendte operationer.
+
+For yderligere at forsimple oversættelsesprocessen, implementeres alle variable i 16 bit. Dette skaber nogle begrænsninger for f.eks. \t{int}, mens omvendt \t{char} og \t{String} repræsenteres ved for mange bits, da kun de første 8 bit anvendes, og specielt for boolskeværdier er ligeledes repræsenteres ved 16 bit.
+
+Kapitlerne \ref{c:assembler}--\ref{c:kodegenerering} uddyber yderligere.
+
+
+\section{Overordnet implementationsovervejelser}
+\label{s:overordnetImplementationovervejelser}
+De beskrevne faser Lexer, Parser og Oversættelse svarer til klasserne \t{Lexer}, \t{Parser} og \t{CodeGenerator} i implementationen. Det overordnede forløb af faserne kan foregå ligefra en total integration af faserne til en total opsplittelse af dem.
+
+\begin{description}
+\item[Iterationsmodellen:] Faserne kommunikerer med hinanden. Kodegeneratoren beder parseren om et parsertræ. Parseren bliver nu aktiveret og beder lexeren om tokens, et af gangen, til der er tokens nok til at kunne opbygge parsertræet. For hver gang lexeren kaldes, læses fra input indtil et token er genkedt der kan returneres. Det hele foregår iterativt mellem de enkelte faser.
+
+\item[Vandfaldsmodellen:] Faserne forløber sekventielt. Lexeren indlæser al input som f.eks. gemmes som en liste af tokens. Parseren parseren en liste af tokens og gemmer et parsertræ. Kodegeneratoren traverserer et parsertræ og genererer kode udfra dette. Den ene faser stopper helt før den næste igangsættes. I et ekstremt tilfælde ville lexeren, parseren og kodegeneratoren være hver sit selvstændige program der hver kunne læse input og skrive deres produkt f.eks. på harddisken.
+\end{description}
+
+I implementation blev begge modeller anvendt, hvor iterationsmodellen anvendes mellem lexer og parser faserne, mens vandfaldsmodellen anvendes mellem parser og oversættelsesfaserne, som skitseret på \fref{s:overordnetKlasseOversigt}. Iterationsmodellen blev valgt for implementationen af lexeren, der konkret betød den skulle returnere ét token af gangen fremfor en liste af tokens. Dette valg blev taget udfra følgende
+
+\begin{enumerate}
+\item[$\blacktriangleright$] Tokens anvendes udelukkende til opbygning af parsertræet, hvor den videre manipulation finder sted. Hvert token bliver derfor kun tilgået en gang.
+
+\item[$\blacktriangleright$] Hvis der er syntax eller semantikfejl i programmet, stoppes indlæsningen præcis hvor fejlen opstod, og ikke først efter hele programmet er blevet analyseret.
+\end{enumerate}
+
+\begin{figure}%[!h]
+\begin{center}
+~~\xymatrix@C=2.6cm
+{
+\XYBOX{Lexer} \ar@/^/[r]^{\txt{Token}} & \XYBOX{Parser} \ar@/^/[l]^{\txt{{\small GetNextToken}}} \ar[r]^{\txt{Tree}}_{\txt{SymbolTable}} & \XYBOX{CodeGenerator} \ar[r]^{\txt{~~~~AsmBlock}} & \\
+}
+\end{center}
+\Caption{Oversigtsbeskrivelse af klasserne i Qjava compileren.}
+\label{s:overordnetKlasseOversigt}
+\end{figure}
+
+Valget på vandfaldsmodellen passer for de sidste faser langt bedre, da der hér skal foretages flere kontroller og manipulationer. Kan parseren opbygge et korrekt parsertræ, er programkoden  syntaktisk korrekt. Herefter skal der foretages kontrol af typer (semantikkontrol) og optimering. For kodegenereringen vil det oftest også være praktisk eksempelvis at kunne indlæse en hel metode af gangen, for at kunne producere mindre og hurtigere kode. Symboltabellen kunne indbygges i parsertræet, men ville dels forplumre fokus af den stringente træstruktur, dels ville den besværliggøre gennemsøgning og opdateringen. Igen anvendes princippet om opsplitning og modularitet.
+
+Kodegeneratoren anvender hjælpeklassen \t{AsmBlock} der vedligeholder en blok assemblerkode. Kodegeneratoren konstruerede fem instanser af klassen, to til henholdsvis data- og code- segmenterne, en til implementationen af standardfunktioner, og en AsmBlock indeholdende main-metoden og slutteligt en blok til generering af opstartskoden. Blokkene blev efter endt generering gemt en af gangen.
+
+
+
+\subsection{Designmønstre}
+Ved implementeringen af compileren, har brugen af designmønstre været overvejet og delvist anvendt. Beskrivelserne og overvejlserne med hensyn til designmønstrene er meget kortfattede, der henvises til letlæselig forklaring af designmønstrene i \cite{gamma}.
+
+
+\subsubsection{Singleton}
+Singleton designmønstret kunne man implementere for alle faserne, således der kun kunne eksistere en instans af hver fase. Designmønstret blev ikke implementeret, selvom man kunne argumentere, at compileren ikke ville give mening, at have to parser-faser på en gang. Omvendt vil implementeringen af singleton betyde begrænsninger af brugbarheden af compileren. Compileren ville f.eks. ikke være anvendelig som back-end for en grafisk brugergrænseflade, hvor man ønskede at compilere flere klasser på en gang (især på dual processor computere ville dette være hensigtsmæssigt). 
+
+\subsubsection{Visitor}
+Visitorfacaden kan fjerne funktionalitet fra parsertræet og placere det i selvstændige klasser. Parsertræet forsimples og bliver overskueligt, men vigtigere, nye operationer kan implementeres og udføres på instanser af parsertræet uden at ændre på parsertræets klasser.
+
+Dette vil være særligt anvendeligt hvis compileren skulle udføre type kontrol, kode optimering, flow analyse, eller skulle kontrollere om variable har fået tildelt værdi før de anvendes. Normalt skulle alle disse funktioner nedarves fra superklassen og implementeres. Med visitor kan ny funktionalitet udføres igennem en visitor-metode.
+
+Visitor ville være perfekt til videre udvikling af compileren, men implementeres ikke jævnfør kravsspecifikationen.
+
+\subsubsection{Facade}
+Facade anvendes til styring af faserne, og kommunikationen mellem klasserne. På denne måde skabes et interface eller en facade, der gør brugen af undersystemer lettere og mere overskuelig for programmøren. Facaden skabes ved at instantiering af faserne styres fra en klasse. Skal f.eks. parseren anvende en lexer, kaldes parseren med et lexer objekt som argument. Typisk vil output fra faserne returneres til facaden, der sørger for at sende det videre til næste fase.
+
+Ved anvendelse af facade designmønstret skabes der, på implementationsniveau, orden og orverblik over hvorledes de enkelte klasser kommunikerer med hinanden og i hvilken rækkefølge de udføres. 
+Facade designmønstret er beskrevet i \cite[side 185--193]{gamma}.  Mens realiseringen findes i \aref{a:compilerfacade}.
+
+
+\begin{figure}[!h]
+\begin{center}
+~~\xymatrix
+{
+*+[F-:<4pt>]{\txt{Sprog A}} \ar@{-->}[rr] && \XYBOX{CompilerFacade} \ar[dll] \ar[dl] \ar[d] \ar[dr] \ar[drr] \ar@{-->}[rr] && *+[F=]{\txt{Sprog B}}\\
+\XYBOX{Lexer} & \XYBOX{Parser} & \XYBOX{SymbolTable} & \XYBOX{Tree} & \XYBOX{CodeGenerator}
+}
+\end{center}
+\Caption{Oversigtsbeskrivelse af klasserne med Facade designmønstret implementeret}
+\label{s:overordnetFacadeOversigt}
+\end{figure}
+
+
+
+
+
+
+\section{Kode oversigt}
+\label{s:struktur_oversigt}
+Figur \xref{s:overordnetKlasseKomunikation}, illustrerer hvorledes kommunukationen mellem Qjava compilerens klasser. \t{TokenNames} er et interface, som alle klasser forbundet med stiplede linier nedarver fra. Specielt for \t{Tree}-klassen (samt underklasser) gælder det, at kun deres \t{toString()} metoder anvender \t{TokenNames} interfacet.
+
+\begin{figure}[!h]
+\begin{center}
+~~\xymatrix@=0.3cm
+{
+ & & & *+[F.]{\txt{TokenNames}}\\
+\\
+\XYBOX{Lexer} \ar[dr] \ar@{.}[uurrr] & & \XYBOX{Parser} \ar[dr] \ar[drr] \ar@{.}[uur] && \XYBOX{CodeGenerator} \ar[dr] \ar@{.}[uul] \\
+& \XYBOX{Token} \ar[ur] & &  \XYBOX{Tree} \ar[ur] \ar@{.}[uuu]&  \XYBOX{SymbolTable} \ar[u] & \XYBOX{AsmBlock}
+}
+\end{center}
+\Caption{Kommunikation mellem faserne, hvor hver kasse samtidig repræsenterer en klasse i implementationen med samme navn. De stiplede linier angiver hvilke klasser der nedarver den {\tt TokenNames}, mens pilene angiver in- og out- put mellem klasserne.}
+\label{s:overordnetKlasseKomunikation}
+\end{figure}
+
+
+Med udgangspunkt i \fref{f:overordnetDiagram} beskrives hvorledes Qjava compileren fungerer på sourcekode niveau. Indlæsning af data forgår med funktionen \t{getNextToken()} i \t{Lexer}, som returnerer det næste genkendte token. \t{Token}-klassen blev skabt som en protokol mellem \t{Lexer} og \t{Parser}, da kommunikationen indeholder mere end én information. Klassen indeholder kun plads til data, og er således ækvivalent med en struct i C/C++.
+
+\t{id} feltet i \t{Token} kan eventuelt kombineret med \t{nval} eller \t{sval} felterne, og angiver dermed præcist det konkrete token. \t{id} indeholder en værdi defineret i interface \t{TokenNames}. \t{TokenNames} er et simpelt interface, der knytter en unik værdi til hver type token i QJava.
+
+Parseren opbygger, udfra tokens, dels et parsertræ, dels en symboltabel. Instantieringen af klassen foregår med kaldet \mbox{\t{new Parser(lexer, symboltable)}}, mens opbygningen af parsertræet, sker med funktionen \mbox{\t{parse()}}, der returnerer træet efter endt parsning. Parsertræet er af typen \t{Tree}, og indeholder alle venstresiderne i QJavas grammatik i form af nedarvede klasser. Klassernes konstruktorer opbygger automatisk parsertræet. De stiplede linier viser klasserne der alle nedarver \t{Tree}. Hver klasse repræsenterer en knudetype i parsertræet.
+
+Symboltabellen opbygges med \t{SymbolTable} klassens \t{add()}. Når parsertræet er opbygget, indeholder \t{SymbolTable} data, som kan anvendes med metoderne \t{classSize(), fncSize(), ...)}.
+
+Kodegeneratoren opbygger fem \t{AsmBlock}, ved hjælp af \t{AsmBlock}'s \t{add()}. Dette foregår under traversering af parsertræet (via dennes accesormetoder), samt opslag i symboltabellen (via dennes accesormetoder \t{classSize(), fncSize(), varIndex() og varType()}).
+
+Koden der starter compileren findes i \aref{a:qjava}
+
+\begin{figure}[!h]
+\begin{center}
+~~\xymatrix
+{
+																			&																												&																						& \XYBOX{AsmBlock\\(codesegment)\\$\bullet$ add()}\\
+\XYBOX{SymbolTable\\(tom)\\$\bullet$ Add()} \ar[dr]							& *+[F-]{\txt{SymbolTable\\(fyldt)\\$\bullet$ classSize()\\$\bullet$ fncSize()\\$\bullet$ varIndex()\\$\bullet$ add()}} \ar[dr]	& 																						& \XYBOX{AsmBlock\\(datasegment)\\$\bullet$ add()}\\
+\XYBOX{Token\\op\\nval/sval} \ar@{-->}[r] 									& \XYBOX{Parser\\$\bullet$ parse()} \ar[u] \ar[d] 																& \XYBOX{CodeGenerator\\$\bullet$ generate()} \ar[r] \ar[dr] \ar[ur] \ar[ddr] \ar[uur] 	& \XYBOX{AsmBlock\\(main fnc)\\$\bullet$ add()}\\
+\XYBOX{Lexer\\$\bullet$ getNextToken()\\$\bullet$ pushBack()} \ar@{-->}[u]	& \XYBOX{~Tree~} \ar[ur] 																							& 																						& \XYBOX{AsmBlock\\(opstart)\\$\bullet$ add()}\\
+\XYBOX{Classdef\\Classcontents\\Vardef\\Fncdef\\if}\ar@{.}[ur] 				& \XYBOX{Sentence\\Fnccall\\while\\return\\assign\\}\ar@{.}[u] 													& \XYBOX{break\\opMonadic\\opDual\\opCall\\opConst} \ar@{.}[ul]							& \XYBOX{AsmBlock\\(standard fnc)\\$\bullet$ add()}\\
+}
+\end{center}
+\Caption{Oversigt over klasserne hvor de hyppigst anvendte metoder er inkluderet. De stiplede pile angiver, at {\tt Token} er en protokol-klassen mellem {\tt Lexer} og {\tt Parser}. De prikkede linier angiver, at 15 klasser nedarver den så {\tt Tree} i virkeligheden består af ialt 16 klasser.}
+\label{f:overordnetDiagram}
+\end{figure}
+
+
+
+
+

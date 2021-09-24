@@ -1,0 +1,18 @@
+'aa'
+
+/* Dette er testfilen.
+ * for den lexikalske analyse...
+ */
+
+// Første fase - tegnsekvenser
+, . ; : ( ) { } [ ] 
++ - * / < % = != == <= 
+&& || & | ! break char class else if int new null return String void while 
+
+// Anden fase - værdi-test (char, tal og strenge)
+'A' 12 "a str"  
+
+// Tredie fase - variabelnavn/sepperatorer test
+foo2  2foo (foo foo( yif 
+ify 2int ((  
+a.b    c.d()    a. + 

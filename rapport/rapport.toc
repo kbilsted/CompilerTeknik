@@ -1,0 +1,183 @@
+\select@language {danish}
+\contentsline {chapter}{\numberline {1}Indledning}{1}
+\contentsline {section}{\numberline {1.1}Kravsspecifikation}{2}
+\contentsline {subsection}{\numberline {1.1.1}Fremgangsm\r ade}{2}
+\contentsline {subsection}{\numberline {1.1.2}Implementering}{2}
+\contentsline {subsection}{\numberline {1.1.3}M\r algruppe}{3}
+\contentsline {section}{\numberline {1.2}Begr\IeC {\ae }nsning}{3}
+\contentsline {subsection}{\numberline {1.2.1}Need to have}{3}
+\contentsline {subsubsection}{Fejl}{4}
+\contentsline {subsubsection}{Optimering}{4}
+\contentsline {subsection}{\numberline {1.2.2}Nice to have}{4}
+\contentsline {section}{\numberline {1.3}Beskrivelse af Qjava }{5}
+\contentsline {subsubsection}{S\IeC {\ae }tninger}{5}
+\contentsline {subsubsection}{Operatorer}{5}
+\contentsline {subsubsection}{Variable og deres typer}{5}
+\contentsline {subsubsection}{Kommentarer}{6}
+\contentsline {subsubsection}{\texttt {String} klassen}{6}
+\contentsline {subsubsection}{Andre standard Javapakker}{6}
+\contentsline {subsubsection}{Afrunding}{6}
+\contentsline {section}{\numberline {1.4}Praktiske detaljer for rapporten}{6}
+\contentsline {subsection}{\numberline {1.4.1}Typografi}{6}
+\contentsline {subsection}{\numberline {1.4.2}Sproganvendelse}{7}
+\contentsline {subsubsection}{Felter og variable}{7}
+\contentsline {subsection}{\numberline {1.4.3}Diagrammer}{7}
+\contentsline {section}{\numberline {1.5}Rapportens opbygning}{7}
+\contentsline {section}{\numberline {1.6}\textlatin {\LaTeX }}{8}
+\contentsline {chapter}{\numberline {2}Compilerens struktur}{9}
+\contentsline {section}{\numberline {2.1}Leksikalsk analyse}{10}
+\contentsline {section}{\numberline {2.2}Parser}{10}
+\contentsline {subsection}{\numberline {2.2.1}Metasproget EBNF}{11}
+\contentsline {subsection}{\numberline {2.2.2}Rekursiv nedstigning}{12}
+\contentsline {section}{\numberline {2.3}Overs\IeC {\ae }ttelse}{12}
+\contentsline {subsection}{\numberline {2.3.1}Assembler}{12}
+\contentsline {section}{\numberline {2.4}Overordnet implementationsovervejelser}{13}
+\contentsline {subsection}{\numberline {2.4.1}Designm\IeC {\o }nstre}{14}
+\contentsline {subsubsection}{Singleton}{14}
+\contentsline {subsubsection}{Visitor}{14}
+\contentsline {subsubsection}{Facade}{15}
+\contentsline {section}{\numberline {2.5}Kode oversigt}{15}
+\contentsline {chapter}{\numberline {3}Leksikalsk analyse}{18}
+\contentsline {section}{\numberline {3.1}Implementationsovervejelser}{18}
+\contentsline {subsection}{\numberline {3.1.1}Lexer klassen}{18}
+\contentsline {subsection}{\numberline {3.1.2}Token klassen}{18}
+\contentsline {subsection}{\numberline {3.1.3}TokenNames interface}{19}
+\contentsline {subsubsection}{L\IeC {\o }sningsmodel 1}{19}
+\contentsline {subsubsection}{L\IeC {\o }sningsmodel 2}{20}
+\contentsline {subsubsection}{L\IeC {\o }sningsmodel 3}{21}
+\contentsline {subsection}{\numberline {3.1.4}Opsummering}{21}
+\contentsline {section}{\numberline {3.2}Implementation}{21}
+\contentsline {subsection}{\numberline {3.2.1}metode \texttt {getNextToken}}{21}
+\contentsline {subsection}{\numberline {3.2.2}metode \texttt {pushBack}}{23}
+\contentsline {chapter}{\numberline {4}Qjava specifikation}{24}
+\contentsline {section}{\numberline {4.1}Udformning af QJavas grammatik}{24}
+\contentsline {subsubsection}{S}{25}
+\contentsline {subsubsection}{classdef, classcontents}{25}
+\contentsline {subsubsection}{vardef}{25}
+\contentsline {subsubsection}{fncdef}{25}
+\contentsline {subsubsection}{sentences}{26}
+\contentsline {subsubsection}{fnccall}{26}
+\contentsline {subsubsection}{if}{26}
+\contentsline {subsubsection}{while}{26}
+\contentsline {subsubsection}{break}{26}
+\contentsline {subsubsection}{return}{26}
+\contentsline {subsubsection}{assign}{26}
+\contentsline {subsubsection}{E}{27}
+\contentsline {section}{\numberline {4.2}Flertydighed}{27}
+\contentsline {section}{\numberline {4.3}Venstrerekursion}{30}
+\contentsline {section}{\numberline {4.4}F\IeC {\o }rste s\IeC {\ae }t}{30}
+\contentsline {section}{\numberline {4.5}Afrunding}{31}
+\contentsline {chapter}{\numberline {5}Parser}{33}
+\contentsline {section}{\numberline {5.1}Implementationsovervejelser}{34}
+\contentsline {subsection}{\numberline {5.1.1}L\IeC {\o }sningsmodel 1}{34}
+\contentsline {subsection}{\numberline {5.1.2}L\IeC {\o }sningsmodel 2}{35}
+\contentsline {subsection}{\numberline {5.1.3}L\IeC {\o }sningsmodel 3}{35}
+\contentsline {subsection}{\numberline {5.1.4}Valg af repr\IeC {\ae }sentation}{36}
+\contentsline {section}{\numberline {5.2}Implementering af parsertr\IeC {\ae }et}{37}
+\contentsline {subsection}{\numberline {5.2.1}Koden}{37}
+\contentsline {section}{\numberline {5.3}Parsertr\IeC {\ae }et}{38}
+\contentsline {chapter}{\numberline {6}Semantisk analyse}{40}
+\contentsline {section}{\numberline {6.1}Semantik}{40}
+\contentsline {section}{\numberline {6.2}Klassen SymbolTable}{41}
+\contentsline {section}{\numberline {6.3}Semantikkontrol i Qjava compileren}{41}
+\contentsline {subsection}{\numberline {6.3.1}Manglende hoplabel}{41}
+\contentsline {subsection}{\numberline {6.3.2}Manglende index}{42}
+\contentsline {section}{\numberline {6.4}Implementation \texttt {SymbolTable}}{42}
+\contentsline {chapter}{\numberline {7}Assembler}{43}
+\contentsline {section}{\numberline {7.1}Assemblersproget}{43}
+\contentsline {subsection}{\numberline {7.1.1}Syntaks}{45}
+\contentsline {subsection}{\numberline {7.1.2}Hop i assembler}{46}
+\contentsline {section}{\numberline {7.2}Overordnet lageradministration}{46}
+\contentsline {subsection}{\numberline {7.2.1}Klasser}{47}
+\contentsline {subsection}{\numberline {7.2.2}Variable}{48}
+\contentsline {subsection}{\numberline {7.2.3}Felter}{49}
+\contentsline {subsection}{\numberline {7.2.4}Mellemresultater}{49}
+\contentsline {subsection}{\numberline {7.2.5}Oprettelse af hoben}{49}
+\contentsline {subsection}{\numberline {7.2.6}Opsummering}{49}
+\contentsline {section}{\numberline {7.3}Referencer \& Objekter}{50}
+\contentsline {section}{\numberline {7.4}Metoder \& metodekald}{51}
+\contentsline {section}{\numberline {7.5}Udtryk og s\IeC {\ae }tninger}{52}
+\contentsline {subsection}{\numberline {7.5.1}Boolsk repr\IeC {\ae }sentation}{52}
+\contentsline {chapter}{\numberline {8}Kodegenerering}{53}
+\contentsline {section}{\numberline {8.1}Overordnet betragtning}{53}
+\contentsline {section}{\numberline {8.2}Kodegenerering}{54}
+\contentsline {subsection}{\numberline {8.2.1}Principperne i praksis}{55}
+\contentsline {subsection}{\numberline {8.2.2}Metoder og metodekald}{56}
+\contentsline {section}{\numberline {8.3}Byggeklodser}{58}
+\contentsline {subsection}{\numberline {8.3.1} \texttt {+}}{59}
+\contentsline {subsection}{\numberline {8.3.2} \texttt {-}}{59}
+\contentsline {subsection}{\numberline {8.3.3} \texttt {-} (monadisk)}{59}
+\contentsline {subsection}{\numberline {8.3.4} \texttt {*}}{59}
+\contentsline {subsection}{\numberline {8.3.5} \texttt {/}}{59}
+\contentsline {subsection}{\numberline {8.3.6} \texttt {\%}}{59}
+\contentsline {subsection}{\numberline {8.3.7} \texttt {!}}{59}
+\contentsline {subsection}{\numberline {8.3.8} \texttt {!=}}{59}
+\contentsline {subsection}{\numberline {8.3.9} \texttt {<=}}{59}
+\contentsline {subsection}{\numberline {8.3.10} \texttt {<}}{59}
+\contentsline {subsection}{\numberline {8.3.11} \texttt {=}}{59}
+\contentsline {subsection}{\numberline {8.3.12} \texttt {==}}{59}
+\contentsline {subsection}{\numberline {8.3.13} \texttt {|, ||}}{60}
+\contentsline {subsection}{\numberline {8.3.14} \texttt {\&, \&\&}}{60}
+\contentsline {subsection}{\numberline {8.3.15}\texttt {break}}{60}
+\contentsline {subsection}{\numberline {8.3.16}\texttt {return}}{60}
+\contentsline {subsection}{\numberline {8.3.17}\texttt {if}}{61}
+\contentsline {subsection}{\numberline {8.3.18} \texttt {while}}{61}
+\contentsline {section}{\numberline {8.4}Bootstrapping}{61}
+\contentsline {section}{\numberline {8.5}Standard funktioner}{62}
+\contentsline {subsection}{\numberline {8.5.1}Integer}{62}
+\contentsline {subsection}{\numberline {8.5.2}String}{63}
+\contentsline {subsubsection}{concat()}{63}
+\contentsline {subsubsection}{length()}{63}
+\contentsline {subsubsection}{charAt()}{63}
+\contentsline {subsection}{\numberline {8.5.3}System}{64}
+\contentsline {subsubsection}{System.exit}{64}
+\contentsline {subsubsection}{System.in.read}{64}
+\contentsline {subsubsection}{System.out.print}{64}
+\contentsline {section}{\numberline {8.6}Registre}{64}
+\contentsline {section}{\numberline {8.7}Opstarts- og Afslutnings- kode}{64}
+\contentsline {subsubsection}{Opstartskode}{64}
+\contentsline {subsubsection}{Afslutningskode}{65}
+\contentsline {section}{\numberline {8.8}Implementation}{65}
+\contentsline {chapter}{\numberline {9}K\IeC {\o }rselsvejledning}{66}
+\contentsline {subsubsection}{.java $\longrightarrow $ .asm}{66}
+\contentsline {subsubsection}{.asm $\longrightarrow $ .exe}{66}
+\contentsline {chapter}{\numberline {10}Afpr\IeC {\o }vning}{67}
+\contentsline {section}{\numberline {10.1}Lexer}{68}
+\contentsline {subsubsection}{Testk\IeC {\o }rsel 2}{69}
+\contentsline {subsubsection}{Testk\IeC {\o }rsel 3}{69}
+\contentsline {subsection}{\numberline {10.1.1}Ikke-problematiske fejl}{69}
+\contentsline {section}{\numberline {10.2}Parser}{70}
+\contentsline {section}{\numberline {10.3}SymbolTable}{74}
+\contentsline {section}{\numberline {10.4}CodeGenerator}{75}
+\contentsline {subsection}{\numberline {10.4.1}\texttt {Sytem.in.read(), System.exit()}}{80}
+\contentsline {section}{\numberline {10.5}Andre test}{80}
+\contentsline {section}{\numberline {10.6}Hobens begr\IeC {\ae }nsninger}{82}
+\contentsline {section}{\numberline {10.7}konklusioner af test}{83}
+\contentsline {chapter}{\numberline {11}Hastighedstest}{84}
+\contentsline {subsubsection}{Princip 1}{84}
+\contentsline {subsubsection}{Princip 2}{85}
+\contentsline {section}{\numberline {11.1}Primtalstest.java}{86}
+\contentsline {chapter}{\numberline {12}Perspektivering}{88}
+\contentsline {section}{\numberline {12.1}Kodegenerering}{88}
+\contentsline {subsection}{\numberline {12.1.1}32 bit}{88}
+\contentsline {subsection}{\numberline {12.1.2}Statisk garbage collection}{89}
+\contentsline {subsection}{\numberline {12.1.3}Lager}{89}
+\contentsline {section}{\numberline {12.2}Sprogudvidelse}{90}
+\contentsline {subsection}{\numberline {12.2.1}Access modifiers}{90}
+\contentsline {subsection}{\numberline {12.2.2}Konstrukt\IeC {\o }r}{90}
+\contentsline {subsection}{\numberline {12.2.3}\texttt {Static} variable og metoder}{90}
+\contentsline {section}{\numberline {12.3}Erfaringer fra k\IeC {\o }rsel}{91}
+\contentsline {chapter}{\numberline {13}Konklusion}{93}
+\contentsline {chapter}{Litteraturliste}{95}
+\contentsline {chapter}{\numberline {A}Qjava}{96}
+\contentsline {chapter}{\numberline {B}CompilerFacade}{97}
+\contentsline {chapter}{\numberline {C}kode Lexer}{98}
+\contentsline {chapter}{\numberline {D}Token}{105}
+\contentsline {chapter}{\numberline {E}TokenNames}{106}
+\contentsline {chapter}{\numberline {F}Parser}{108}
+\contentsline {chapter}{\numberline {G}Tree}{120}
+\contentsline {chapter}{\numberline {H}SymbolTable}{128}
+\contentsline {chapter}{\numberline {I}AsmBlock}{133}
+\contentsline {chapter}{\numberline {J}CodeGenerator}{134}
+\contentsline {chapter}{\numberline {K}Qjava output}{151}
+\contentsline {chapter}{\numberline {L}Asm primtalstest}{155}

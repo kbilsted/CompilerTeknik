@@ -1,0 +1,542 @@
+\chapter{Kodegenerering}
+\label{c:kodegenerering}
+Dette kapitel tager udgangspunk i, at læseren har forstået det tidligere kapitel om specielt lageradministrationen og hvorledes klassers indhold bliver repræsenteret. Kapitlet skitserer hvorledes \t{CodeGenerator} genererer kode for de resterende dele af Qjava.
+
+
+%\item Kodegenerering
+% Standardfunktioner
+% Opstarts og afslutningskode
+% Implementation
+
+\OverviewLineNoTitle
+
+
+
+\section{Overordnet betragtning}
+\label{s:kodegen_betragtning}
+
+Før den egenlige kodegenerering skal finde sted, kan det være fordelagtigt at illustrere rutediagrammer, der viser hvorledes strukturerede programmer tager sig ud. Figur \xref{f:rutediagram} viser ruterne programmer. \t{s} repræsenterer sætninger, dvs. \i{sentences} i grammatikken, mens \t{E} repræsenterer udtryk, \i{E} i grammatikken.
+
+Diagrammet til venstre på figuren viser, at sætninger genereres kronologisk, og individuelt uden hensyn til hverken foregående eller kommende sætninger. Dette gælder for alle sætninger i Qjava, med to undtagelser, nemlig sætninger indeholdt i \t{if} og \t{while}.
+
+Diagrammet i midten viser \t{if} der branch'er eller forgrener afviklingsforløbet. Figuren viser, at evalueringen af \t{if} genereres selvstændigt, og der derfra hoppes til \t{s$_1$} eller \t{s$_2$}, der genereres som vist i det venstre rutediagram. Label \t{l} medtages da \t{s$_1$} efter endt generering skal hoppe til slutningen af \t{if}. Hvis dette hop ikke blev foretaget, ville kodeblokken \t{s$_2$} blive udført.
+
+Rutediagrammet til venstre viser \t{while}-løkken. Koden \t{s$_1$} skal genereres sammen med informationen om navnet på label \t{l}, til de tilfælde hvor \t{break} mødes.
+
+
+Det bemærkes måske at metoder og klasser ikke er medtaget i rutediagrammerne. Grundene til dette er, for det første er de meget svære at skitsere, og for det andet kan de betragtes ``indpakning af koden''. Det eneste der er interessant under kodegenereringen af en metode er, hvor metodens  argumenter og variable befinder sig, samt hvad navnet er på en label placeret i bunden af metoden (som anvendet der hoppes til hvis \t{return} mødes. Bemærk at viden om placeringen af metoden i en klasse, metodens funktionalitet osv. er fuldstændig underordnet. ``Indpakningen'' består så og sige af lokale variable, argumenter samt en label. Klasser er det i kodegenerations sammenhænge på dette niveau kun, at \t{bx} registret indeholder this-referencen. \t{bx} administreres ved tilgang til variable i andre objekter og ved funktionskald til andre objekter.
+
+\begin{figure}
+\begin{center}
+~~~\xymatrix@W=0.2cm@C=0.37cm
+{
+*\txt{s$_1$ ; s$_2$ ;} 		&								& *\txt{\t{if(E)}\{\ s$_1$\}\ \t{else} \{\ s$_2$\}}					&									& *\txt{\t{while(E)}\{\ s$_1$\}}\\
+*++[o][F]{} \ar[d]			&								& *++[o][F]{}  \ar[d]												& 									& *++[o][F]{} \ar[d]\\
+*++[o][F]{s_1} \ar[d]		&								& *++[F]{\txt{if E goto s$_1$ \\ else goto s$_2$}} \ar[ddr] \ar[dl]	&									& *++[F]{\txt{while E goto s$_1$}} \ar[d] \ar@/_3pc/[dd]\\
+*++[o][F]{s_2} \ar[d]		& *++[o][F]{s_1} \ar@/_1pc/[dr]	&																	&  									& *++[o][F]{s_1} \ar@/_7pc/[u] \ar@/^3pc/[d]|{\txt{\t{break}}}\\
+*++[o][F]{}					&								& *++[o][F]{l} \ar[d]												& *++[o][F]{s_2} \ar@/^1pc/[dl]		& *++[o][F]{l} \ar[d]	\\
+							&                          		& *++[o][F]{}                                                       &                   		        & *++[o][F]{}\\                    
+}
+\end{center}
+\Caption{Rutediagram for Qjava, hvor de tomme cirker noterer mulig eksistens af anden kode. s noterer sætninger, E noterer udtryk og l noterer label der kan hoppes til.}
+\label{f:rutediagram}
+\end{figure}
+
+\section{Kodegenerering}
+Som det ses udfra skitseringen af syntaksen for assembler i sektion \xref{ss:asm_syntaks}, er det første problem at omforme Java udtryk til noget der i de fleste tilfælde har formen:  \mbox{\t{COMMANDO a$_1$ , a$_2$ }}. Således bliver udtrykket \t{1-2-3} til
+
+\begin{quote}
+\t{t$_1$ = 1 - 2}\\
+\t{t$_2$ = t$_1$ - 3}\\
+\end{quote}
+
+Omvendt er dette ikke et stort problem, da f.eks. alle udtryk allerede er på denne form, i kraft af måden de repræsenteres på i parsertræet. Kodegenereringen for ovenstående additionsudtryk vil derfor være \t{generer venstre træ; generer højretræ}. Herefter vides det, at der findes to ``mellemresultater'' på stakken. Der skrives ``mellemresultater'' da disse enten kan være tal, eller resultat af en anden beregning. Genereringen af venstretræet vil være resultatet af genereringen af \t{1, -, 2}, som værende en mellemregning. Genereringen af højretræet svarer til genereringen af \t{3}. De to ``mellemregninger'' pop'es fra stakken og subtraktionen udføres, hvorefter resultatet push'es på stakken.
+
+
+\begin{center}
+\mbox{
+\xymatrix
+{
+          &                         & *+={-} \DOWNL \DOWNR \\
+          & *+={-} \DOWNL \DOWNR    &                       & *+={3} \\
+*+={1} 	  &                         & *+={2} \\
+}}
+\end{center}
+
+
+bliver til
+
+\begin{center}
+\mbox{
+\xymatrix
+{
+          & *+={-} \DOWNL \DOWNR     \\
+*+={-1} 	  &                         & *+={3} \\
+}}
+\end{center}
+
+der tilsidst bliver til $-4$
+
+
+Kodegenereringen fra parsertræ til assemblerkode foregår udfra følgende to grundprincipper
+
+\begin{itemize}
+\item[$\blacktriangleright$] Givet en række sætninger ($1\dots n$), kan sætningerne oversættes i kronologisk rækkefølge. Indholdet i hver sætning, $0\dots n$ sætninger/udtryk, oversættes på samme vis kronologisk. 
+
+\item[$\blacktriangleright$] Nettoeffekten af et udtryk, er præcis én ekstra værdi på stakken.
+\end{itemize}
+
+ Det skal bemærkes, at første regel skal forstås rekursivt.
+ 
+
+\subsection[Principperne i praksis]{Eksempel på anvendelse af principperne}
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+a = 2+3;
+
+while(i < 100)
+{
+    i = i + 4+5;
+    b = 6+7;
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Ifølge første princip kan vi opsplitte oversættelsen i henholdsvis \\
+~~~~\t{a = ...} og \t{while(...)\{...\}}.\\
+\t{while} kan ifølge det andet princip opsplittes til:\\
+~~~~\t{(...), \{...\}} , altså en conditiondel og en krop,\\
+hvor kroppen (\t{\{...\}}) kan opsplittes\\
+~~~~\t{i = ...} og \t{b = ...}.\\
+I alt 4 dele:
+
+\begin{itemize}
+\item[$\blacktriangleright$] \t{a = 2+3}
+\item[$\blacktriangleright$] while condition: \t{i < 100}
+\item[$\blacktriangleright$] while krop: \t{i = i + 4 + 5}
+\item[$\blacktriangleright$] while krop: \t{b = 6+7}
+\end{itemize}
+
+Oversættelsen er skitsered på \fref{f:asmgen}, hvor anden kolonne er dét der skal oversættes, tredie kolonne skitserer kodegenereringen på abstrakt plan, og sidste kolonne er et førsøg på at skitsere hvorledes dette kunne tage sig ud i assembler. \# noterer et register. 
+Linierne 2--7 viser, hvorledes mellemresultaterne 2 og 3 gemmes på stakken. Additionsoperatoren pop'er de to øverste elementer, adderer og push'er resultatet (der evt. kunne være et mellemresultat, hvis udtrykket \t{2+3} havde være længere. Det ses at resultatet af udtrykket var et ekstra element på stakken, nemlig 5. Assign operatoren på linierne 8--9 henter også blindt værdierne der skal anvendes fra stakken. Eksemplet vil ikke blive yderligere forklaret, da principperne er tydeligt nok illustreret. 
+
+For en god ordens skyld bør det bemærkes, at linierne 15--18 er en forsimpling af hvorledes kodegenereringen i Qjava fungerer. Forsimplingen er lavet for at bevare overblikket. Det der reelt sker i kodegenereringen er, at linierne 15--16 udføres, men på det der svarer til linie 16 hoppes ikke til \t{less}, men til et sted der push'er det boolske udtryk for true (\t{FFFFh}) og istedet for \t{jmp whileEndLabel} hoppes til et sted hvor der push'es det boolske udtryk for false (\t{0h}). Først herefter foretages en \t{push \#1, cmp \#1, 0} er \t{\#1} lig \t{FFFFh} (true) hoppes til label \t{less} ellers hoppes til label \t{whileEndLabel}.
+
+
+\begin{figure}
+\begin{center}
+\begin{footnotesize}
+\fbox{
+\begin{tabular}{rlll}
+Linie & Del		& Abstrakt	& pseudo assembler\\
+\hline
+1 & \t{a = 2+3}	& code(a =)	& \\
+2 &				& code(2)	& \t{push 2}\\
+3 &				& code(3)	& \t{push 3}\\
+4 &				& code(ADD) & \t{pop \#1}\\
+5 &				&			& \t{pop \#2}\\
+6 &				&			& \t{add \#1, \#2}\\
+7 &				&			& \t{push \#1}\\
+8 &				&			& \t{pop \#1}\\
+9 &				&           & \t{mov variable a, \#1 }\\
+10&				&			& \t{start\underscore while:}\\
+11&\t{i < 100}	& code(i)	& \t{push variable i}\\
+12&				& code(100) & \t{push 100}\\
+13&				& code(LESS)& \t{pop \#1}\\
+14&				&			& \t{pop \#2}\\
+15&				&			& \t{cmp \#1, \#2}\\
+16&				&           & \t{jl less}\\
+17&				&           & \t{jmp end\underscore while}\\
+18&				&			& \t{less:}\\
+19&\t{i = i+4+5}& code(i =) & \\
+20&				& code(i)   & \t{push variable i}\\
+20&				& code(4)   & \t{push 4}\\
+. &				&			&\\
+. & 			&			&\\
+30&\t{b = 6 + 7}& code(b=)  &\\
+31&				& code(6)   & \t{push 6}\\
+. &				&			&\\
+. &				&			&\\
+40&				&			&\t{jmp start\underscore while} \\
+41&				&           &\t{end\underscore while:} \\
+\end{tabular}
+}
+\end{footnotesize}
+\Caption{Figuren illustrerer hvorledes Java kan genereres til assembler.}
+\label{f:asmgen}
+\end{center}
+\end{figure}
+
+
+
+\subsection{Metoder og metodekald}
+\label{ss:metoderogmetodekald}
+Genereringen af metoder sker ved følgende: For hver metode (Fncdef) der mødes ved traversering af parsertræet, dan følgende kode i code segmentet.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+klassenavn_metodenavn PROC
+
+; her genereres metodens krop
+
+klassenavn_metodensnavn ENDP
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Metodekald genereres let. Givet koden \t{A a = new A();} og mødes udtrykket \t{a.f();} under traverseringen, genereres følgende kode: \verb£call typeVariablenHar_f£ , hvor \t{typeVariablenHar} i dette tilfælde er ``A'', som findes med en opslagsmetode i symboltabellen  Der genereres altså \verb£call A_f£. Bemærk administrationen af registrene \t{bp, bx} er fjernet fra eksemplet.
+
+\section{Byggeklodser}
+Som vist fra rutediagrammet og de efterfølgende eksempler, er oversættelsen i mange tilfælde blot at indsætte ``byggeklodser'' for de forskellige slags udtryk og sætninger sammen med en overordnet administration som beskrevet i det forrige kapitel. I de følgende undersektioner, gennemgås assemblerkoden for byggeklodserne for sætninger og udtryk. Da koden er meget simpel vil koden stå ukommenteret.
+
+Generelt for implementationerne knytter sig nogle få forholdsregler.
+
+\begin{itemize}
+\item[$\blacktriangleright$] De monadiske operatorer (\t{!, -}) forventer, at dét de skal operere på, forefindes øverst på stakken. Implementationerne \t{pop}'er stakken, udfører operationen og \t{push}'er derefter resultatet.
+
+\item[$\blacktriangleright$] De duale operatorer (de restende operatorer med undtagelse af \t{=}) forventer, at dét de skal operere på, forefindes øvers og næstøverst på stakken. Endvidere forventes det øverste element at repræsentere højresiden af operatoren, når udtrykket skrives i sproget Qjava. Implementationerne \t{pop}'er de to øverste elementer fra stakken, udfører operationen og \t{push}'er derefter resultatet.
+
+\item[$\blacktriangleright$] Specielt for operatorene \t{|, ||, \&, \&\&, <, <=, !=, ==} at disse ikke push'er en værdi, men et boolsk udtryk, som repræsenteres som henholdsvis \t{0h} og \t{FFFFh}. Videre begrundelse for dette findes i sektion \xref{ss:boolskrepraesentation}.
+
+
+\item[$\blacktriangleright$] Generer kode til henholdsvis stak eller Hob tilgang beskrevet i de tidligere kapitler. \i{mem} (som forefindes i sektion \xref{ss:memdimsdut}) kan derfor være \t{hob[bx+index]} eller \t{bp-index}.
+\end{itemize}
+
+\twocolumn
+
+\subsection{ \t{+}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  dx
+pop  ax
+add  ax, dx
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{-}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  dx
+pop  ax
+sub  ax, dx
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{-} (monadisk)}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  ax
+neg  ax
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{*}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  dx
+pop  ax
+mul  dx
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{/}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  si
+pop  ax
+xor  dx, dx
+div  si
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{\%}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  si
+pop  ax
+xor  dx, dx
+div  si
+push dx
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{!}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  ax
+not  ax
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{!=}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}pop  dx
+pop  ax
+cmp  ax, dx
+jne  neq_1
+xor  ax, ax    ; is ==
+jmp  neq_end1
+neq_1:
+mov  ax, FFFFh ; is !=  true result
+neq_end1:
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{<=}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+pop  dx
+pop  ax
+cmp  ax, dx
+jle  lequal_1
+xor  ax, ax    ; is not <=
+jmp  lequal_end1
+lequal_1:
+mov  ax, FFFFh ; is <=  true result
+lequal_end1:
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{<}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+pop  dx
+pop  ax
+cmp  ax, dx
+jl   less_1);
+xor  ax, ax    ; is not <
+jmp  less_end1
+less_1:
+mov  ax, FFFFh ; is < // true result
+less_end1:
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{=}}
+\label{ss:memdimsdut}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+pop ax
+mov <MEM>, ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{==}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+; equal
+pop  dx
+pop  ax
+cmp  ax, dx
+je   eq_1
+xor  ax, ax  ; is != // false result
+jmp  eq_end1
+eq_1:
+mov  ax, FFFFh ; is == // true result
+eq_end1:
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{|, ||}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+pop  dx
+pop  ax
+or   ax, dx
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{\&, \&\&}}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+pop  dx
+pop  ax
+and  ax, dx
+push ax
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+\subsection{\t{break}}
+Hvis \t{break} kaldes udenfor en while løkke meldes fejl ved compilering, ellers genereres:
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+jmp while_end_label
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+
+\subsection{\t{return}}
+Da \t{return} ikke returnerer værdier, hoppes til den sidste linie i assembler proceduren.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+jmp fnc_end_label
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\onecolumn
+
+
+\subsection{\t{if}}
+\t{if} består af tre blokke henholdsvis\\
+\t{if(condcode (1))\{thencode(2)\} else \{ elsecode (3)\}}. Da enten \t{thencode} eller \t{elsecode} skal udføres skal der anvendes labels til at kunne hoppe til disse sektioner, endvidere skal der være label til i slutningen af \t{if} udtrykket (så \t{thencode} ikke også udfører \t{elsecode}), samt slutningen af funktionen skal kendes til \t{return}.
+
+Først genereres condition koden (som princip 1 foreskriver) og evalueres. Resultat gemmes på stakken som princip 2 foreskriver. Resultatet \t{pop}'es og evalueres og der udføres hop til elsecode eller thencode alt efter resultatet. De to kodeblokke genereres som princip 1 foreskriver.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+; tree == the parsetree of instanceof If
+; generate condition -> eGen(tree.getCond());
+pop  cx
+cmp  cx, 0  ; compare condition code
+je   else1
+
+then1:
+; generate then code ->  sentenceGen(tree.getThen());
+jmp  ifend1
+
+else1:
+; generate else code ->	sentenceGen(tree.getElse());
+
+ifend1:
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{ \t{while}}
+\t{while} består af to blokke henholdsvis:\\
+\t{while(condcode (1))\{whilecode (2)\}}. Til koden skal der endvidere produceres et ``startWhile'' og et ``slutWhile'' label.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+; tree == the parsetree of instanceof While
+start_while1:
+; generate condition code ->  sentenceGen(t.getCond());
+pop  ax
+cmp  ax, 0 ; compare condition code
+je   end_while1
+
+;generate while-body -> sentenceGen(tree.getWhile());
+jmp  start_while1  ; loop once more
+
+end_while1:
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+
+\section{Bootstrapping}
+Funktionsdeklarationen \t{static void main()} erklærer starten på et program. Qjava understøtter ikke \t{static}, men ignorerer det af hensyn til kompabilitet med Java. Når oversætteren møder funktionen \t{main()} (fra sektion \xref{s:sprogdef} er det givet der kun er en \t{main()} pr. program. Genereres en label ``START'' (i opstartskoden genereres kaldet \t{jmp START}). Herefter allokeres objektet funktionen befinder sig i (\t{<SIZEOFCLASS>} erstattes af klassens størrelse). Derefter justeres registrene \t{bp, bx}. Slutteligt genereres kroppen af main-funktionen.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+START:
+    mov  cx, <SIZEOFCLASS>
+    call new
+    mov  bp, sp
+    sub  bp, 2
+    mov  bx, ax
+    .
+    .
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+
+\section{Standard funktioner}
+\label{s:stdfunktioner}
+Qjava implementerer dele af standardpakkerne der følger med Java. For \t{Integer, String} gælder det, at de har overholdt samme navnekonventioner som dannelsen af andre funktioner, hvilket har den fordel at hvis \t{String s; s = "hej ib";} gælder og udtrykket \t{s.length()} mødes, bliver \t{call}-kaldet genereret automatisk, som forklaret i eksemplet med \t{a.f()} kaldet i sektion \xref{ss:metoderogmetodekald}. 
+
+Kodegenerering i forbindelse med metodekald til pakkerne \t{Integer, System} bliver håndteret individuelt for hver metode.
+
+Da standardfunktionerne er simple, forklares deres implementation udelukkende. Der henvises derfor til slutningen af \aref{a:codegenerator} hvor implementationen er at finde.
+
+\subsection{Integer}
+Fra Integerpakken implementeres udelukkende metoden\\ \t{static String Integer.toString(int)} (klassen \t{Integer} implementeres ikke). Resultatet er internt, at en pointer til den dannede streng push'es på stakken. Implementationen gennemgår følgende faser i oversættelsen af et tal til en streng:
+
+\begin{enumerate}
+\item[$\blacktriangleright$] Er tallet negativt gemmes denne information og tallet multipliceres med $-1$.
+\item[$\blacktriangleright$] Sålænge tallet $> 0$; divider tallet med 10 og \t{push} resten ved divisionen, herved gemmes cifret længst mod højre.
+\item[$\blacktriangleright$] Alloker en ny \t{String} og fyld den vha. \t{pop}. 
+\end{enumerate}
+
+Ved anvendelse af stakken til temporær lagring af cifrene returneres cifrene i den omvendte og dermed korrekte rækkefølge.
+
+
+\subsection{String}
+String typen implementeres ved at være en klasse der indeholder et størrelsesfelt, der angiver længden af strengen, mens resten af felterne indeholder tekststrengens respektive bogstaver. 
+
+
+\t{String s = "blabla"} \begin{tabular}{|c|}
+\hline Længde \\ \hline	\\T	\\e	\\g	\\n	\\	\\ \hline
+\end{tabular}
+\begin{tabular}{|c|}
+\hline 6 \\ \hline b \\l \\a \\b \\l \\a \\ \hline
+\end{tabular}
+
+Da hvert tegn, samt størrelsesfeltet repræsenteres ved 16 bit, fylder tekststrengen ``Datamat!'' derfor $(8\cdot 2)+2$ bytes i hoben, når den repræsenteres i et \t{String} objekt. Referencer til \t{String} objekter peger på det første element i instansen, nemlig længden af strengen, der for ``Datamat!'' er lig 8. Indexeringen af de enkelte bogstaver foregår som i Java ved at første tegn ligger på plads 0 og så fremdeles.
+
+Bemærk at strengene ikke er 0-termineret. En strengs længde bestemmes udelukkende ved størrelsesfeltet.
+
+Foruden selve typen implementeres endvidere metoderne \t{concat(), length()} og \t{charAt()} der alle har samme funktionalitet som i Java.
+
+\subsubsection{concat()}
+\t{String concat(String)} funktionen fungerer ved at oprette en ny \t{String} med summen af de to \t{String} instanser (adderer første element fra hver instans), hvorefter den nye streng fyldes med indholdet af de gamle strenge. 
+
+Der kontrolleres ikke for om den ene eller begge referencer er \t{null}
+
+\subsubsection{length()}
+\t{int length()} læser størrelsesfeltet i instansen og returnerer denne. Der kontrolleres ikke hvorvidt referencen er \t{null}
+
+\subsubsection{charAt()}
+\t{char charAt(int)} returnerer ASCII værdien af den pågældende possition. Da hvert bogstav fylder 2 bytes, og da instansen indeholder et størrelsesfelt, findes bogstavet i hoben ved 
+\t{hob[bx+(possition*2)+2]}. Der kontrolleres ikke for ugyldige eller negative værdier af possitionen. Endvidere skal det bemærkes at\ \t{System.out.print()} ikke kan udskrive typen char.
+
+\subsection{System}
+\subsubsection{System.exit}
+\t{System.exit()} skal øjeblikkeligt stoppe afviklingen af programmet. Dette gøres med et DOS interupt kald.
+
+\subsubsection{System.in.read}
+Metoden læser et tegn fra tastaturet og er implementeret med et DOS interrupt kald.
+
+\subsubsection{System.out.print}
+Metoden udskriver et \t{String} instans til skærmen. Implementationen læser størrelsesfeltet og udskriver derefter tegnene et for et med et DOS interrupt kald.
+
+
+\section{Registre}
+De mange registre der findes i 80x86 har ikke alle samme funktionalitet. Således kan visse registre anvendes til at referere til hukommelse mens andre ikke kan. Det er derfor ikke en tilfældighed at \t{bx} og \t{bp} registrene står for den overordnede administration. Nedenstående tabel viser i grove træk hvorledes registrene anvendes af compileren.
+
+\medskip
+\begin{tabular}{l|l}
+Registre & Anvendelse \\
+\hline
+ab, cx, dx, si & Aritmetik og mellemresultater\\
+bx, bp         & \t{this} pointer for klasser, funktioer og variable.\\
+si, di         & Pointere relative offset, f.eks. bx\\
+sp             & Indeholder adressen på det øverste element på stakken.\\
+\end{tabular}
+
+
+\section{Opstarts- og Afslutnings- kode}
+Ligesom Java kræver en ``\t{static void main()}''-metode, kræver DOS en opstartskode før assemblerprogrammer kan afvikles.
+
+\subsubsection{Opstartskode}
+Opstartskoden fortæller assembleren hvilken memorymodel der anvendes, hvor stor stakken skal være og hvor data-segmentet befinder sig i memory. Slutteligt hoppes til label ``START'', hvorfra kroppen af funktionen ``\t{static void main()}'' er placeret.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+DOSSEG
+.MODEL SMALL
+.STACK 200h
+
+.DATA
+    hobptr  dw 0
+    hob     dw 32605 dup(0) ; allocate hob
+    ; error messages
+    oomstr	db	10,13,'Out of memory! Can not allocate another class.','$',0,0
+
+.CODE
+     mov ax, @data
+     mov ds, ax
+     jmp START
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+\subsubsection{Afslutningskode}
+Pogrammer kan på et hvilket som helst tidspunkt afsluttes med DOS interrupt 21 med argument \t{4ch}.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+    mov ah,4ch
+    int 21h
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Slutteligt kræver assembleren ordet ``\t{END}'' som sidste ord i sourcekoden.
+
+
+
+
+\section{Implementation}
+Udover implementeringen af standardfunktionerne, blev \t{CodeGenerator} implementeret ved en metode for hver knudetype der fandtes i parsertræet. Den faste struktur var derfor klart en fordel, da alle felter var eksplicitte. Implementationen foregik da også næsten smertefrit, og ændres strukturen i parsertræet er det forholdsvis enkelt at gøre det samme i kodegeneratoren. Den eneste afvigelse fra parsertræet er hvis \i{E$_{10}$} genkendes som en funktionskald, oprettes en \t{fncCall} knude, som sendes over i metoden \t{fncCallGen}, der genererer et funktionskald.
+

@@ -1,0 +1,21 @@
+\chapter{Konklusion}
+\label{c:konklusion}
+
+Igennem kapitlerne \ref{c:lexer}--\ref{c:kodegenerering} er Qjava sproget og Qjava compileren blevet konstrueret efter retningslinierne i kapitel \ref{c:compilerstruktur}. Resultatet er blevet en  velfungerende compiler, der genererer assemblerkode, der direkte kan assembleres og afvikles. Qjava compileren opfylder fuldt ud kravsspecifikationen givet i sektion \xref{s:kravsspecifikation} og undersektioner. 
+
+Det eneste der kan synes problematisk er begrænsningerne for \t{if, while} og metoders størrelse. Disse problemer skal dog ene og alene tilskrives assemblerspecifikke og Microsoft DOS specifikke problemer, og er ikke ``oversætterteoretiske problemer''. I samme boldgade opstod der mindre problemer med hvilke registre der kunne udføre hvilke funktioner.
+
+I \kref{c:hastighedstest} blev tesen fra indledningen om at uoptimeret native assemblerkode er væsenligt hurtigere end afviklingen af bytecode falsificeret. Det viste sig, at for et lille, men  beregningsmæssigt tungt, program var afviklingshastigheden kortere for JDK. JDK var 9 sekunder om at afvikle programmet, mens assemblerkoden Qjava compileren producerede, var 11 sekunder om samme job. Ved hjælp af to simple optimeringsprincipper angivet, i kapitel \ref{c:hastighedstest}, blev køretiden for assemblerkoden dog reduceret til 8 sekunder. Og yderligere 2 sekunder blev vundet ved gennemførelse af mere vanskelig optimering. De henholdsvis 6 og 8 sekunder er hurtigere end JDK, men som tiderne viser, bliver tidsgevinsten ved anvendelse af native assembler nok aldrig en størrelsesorden eller i nærheden af hvad der på forhånd var forventet.
+
+Omvendt er dette budskab for Java programmører utrolig possitivt, da teser som den indledningen præsenterede kan manes i jorden. Rapporten kunne måske ligefrem være med til at skabe en holdningsændring hos de mennesker der stadig mener Java er et langsomt sprog --- i hvertfald når diskusionen omhandler mindre programmer.
+
+
+\begin{quote}\textit{Det må derfor konkluderes, at anvendeligheden af Qjava compileren, set i et tidsbesparelses-perspektiv, ikke er specielt stor. Der skal implementere meget effektive optimeringsalgoritmer, hvis målsætningen med Qjava compileren skal opfyldes.}
+\end{quote}
+
+
+Qjava compileren producerer assemblerkode med kommentarer, hvilket kan gøre compileren anvendelig for ikke tilsigtede målgrupper. Disse målgrupper kunne være kursister ved oversætterteknik-kurser, eller kurser i Intel 8086 assembler, da det er muligt at følge Qjava programmernes gang igennem kommentarerne i assemblerkoden.
+
+
+I forhold til modul 1 på datalogi/RUC målsætning om at lære Java og forstå sprogets sammenhænge, passer dette projekt godt, da det netop er sproget og ikke kodegenereringen, der er fokus. Projektet er endvidere et godt oplæg til et modul 2 projekt, der kunne udbygge compileren med  semantik kontrol, advanceret kodegenerering, lager-administration og kodeoptimering.
+

@@ -1,0 +1,56 @@
+%
+% Forsiden + abstract
+%
+
+\begin{titlepage}
+\def\streg{ \rule{\textwidth}{0.4mm}}
+~\vskip 0.6cm
+
+ \Large{\textbf{Datalogi, modul 1\\Roskilde Universitetcenter\\Vejleder: Mads Rosendahl}}
+\vskip 2.4cm
+
+\streg
+\vskip 3mm
+
+\begin{Huge}
+\hskip 4.27cm Compilerteknik,\vskip 1pt
+\hskip 4.27cm fra Java til Assembler\vskip 5pt
+\end{Huge}
+
+\begin{Large}
+\hskip 4.27cm  Efterår 1999\vskip 1pt
+\end{Large}
+\begin{small}
+\hskip 4.27cm  version 1.01
+\end{small}
+\vskip 0.05 cm
+\streg
+
+\vskip 5.8cm
+\begin{Large}
+\textbf{Forfattet af:}\\
+\textit{Kasper B. Graversen}\\
+\end{Large}
+{\small vha \LaTeX2e\ }
+
+\end{titlepage}
+
+\begin{abstract}
+Projektet udgangspunkt var følgende tese:
+
+\textit{Ved at anvende en compiler, der kan oversætte et Java program til native kode, kan programmer afvikles hurtigere end JDK's virtual machine. Dette gælder både med hensyn til opstart, og den faktiske udførsel også selvom den producerede kode ikke optimeres.}
+
+\textit{Compileren, dette projekt præsenterer, kan derfor anvendes til compilering af små nyttige programmer, der herved opnår at være mindre ressourcekrævende og hurtigere i deres udførsel.}
+
+Udfra dette skabes et programmeringssprog, Qjava, der er en lille delmængde af Java. Endvidere realiseres en Qjava compiler i programmeringsproget Java, der kunne oversætte Qjava kode til assembler, der efterfølgende kunne assembleres og afvikles på en DOS maskine. 
+
+Igennem stærk afgrænsning af sprog, fejlkontrol mv. lykkedes det at skabe en velfungerende compiler. Idéen bag compileren er, at brugerens programmer skal skabes og kunne fungere i JDK. Qjava compileren skal først anvendes, når brugeren ønsker en hurtigere afvikling af sit færdige program. Således skal javaprogrammer, der er indeholdt i Qjava, og som kan compileres i JDK også kunne compileres i Qjava compileren.
+
+Efter realiseringen af compileren blev et regnetungt primtalsprogram testet i henholdsvis JDK og i Qjava. Resultatet var, at JDK afviklede koden hurtigere, end den uoptimerede assembler Qjava compileren kunne generere! Tesen, der var igangsætter af projektet, var falsificeret. 
+
+Rapporten konkluderer herefter:
+
+\textit{Anvendeligheden af Qjava compileren, set i et tidsbesparelses-perspektiv, ikke er specielt stor. Der skal implementeres meget effektive optimeringsalgoritmer, hvis målsætningen med Qjava compileren skal opfyldes.}
+
+
+\end{abstract}

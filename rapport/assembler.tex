@@ -1,0 +1,318 @@
+\chapter{Assembler}
+\label{c:assembler}
+Beskrivelse af kodegenerering er opdelt i to kapitler, hvor dette kapitel kort forklarer den anvendte assembler, samt generelt om hvorledes lageradministrationen foregår.
+
+Kapititel \xref{c:kodegenerering} tager sig af forklaringen af kodegenereringen og på hvorledes implementeringen blev foretaget.
+
+
+\begin{itemize}
+\item[$\circlearrowright$] Om det anvendte assemblersprog, sektion \xref{s:asmsprog}
+\item[$\circlearrowright$] Den overordnede lageradministration, sektion \xref{s:overordnetlageradministration}
+\item[$\circlearrowright$] Referencer og objekter, sektion \xref{s:referencerogobjekter}
+\item[$\circlearrowright$] Metoder og metodekald, sektion \xref{s:metoderogmetodekald}
+\item[$\circlearrowright$] Udtryk og sætninger, sektion \xref{s:udtrykogsaetninger}
+\end{itemize}
+\OverviewLine
+
+ 
+\section{Assemblersproget}
+\label{s:asmsprog}
+Det anvendte assemblersprog er Intel 80286'er kompatibelt, beregnet på at blive udført i Microsoft DOS. Assembler faciliterer en række kommandoer til aritmetik, hop osv., hvor hovedparten Qjava anvender ses i \tref{t:asmref}. Alle kommandoerne er meget generelle og findes i næsten enhver assembler, hvilket gør oversættelsesfasen let porterbar. Foruden disse kommandoer har 80286 arkitekturen adskillelige registre, hvor kun de der anvendes her fremstilles i \tref{t:asmOversigt}.
+
+\begin{figure}[!h]
+\begin{center}
+\fbox{
+\begin{tabular}{|c|l|c|l}
+\multicolumn{2}{l}{~~Registre}	& \multicolumn{2}{l}{~~Segmenter}\\
+ax & Accumulator 			 	& cs & Code Segment \\
+bx & Base Index 				& ds & Data Segment \\
+cx & Count						& ss & Stack\\
+dx & Data \\
+sp & Stack Pointer \\
+bp & Base Pointer\\
+di & Destination Index\\
+si & Source Index\\
+(ip) & (Instruction Pointer)\\
+\end{tabular}
+}
+\end{center}
+\Caption{Oversigt over de anvendte registre og segmenter i Intel 80286 arkitekturen.}
+\label{t:asmOversigt}
+\end{figure}
+
+
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|p{9cm}|}
+\hline
+\multicolumn{2}{|c|}{Flytning af data} \\
+\hline
+\t{mov}	a, b & Kopierer indholdet af register b til a.\\
+\t{mov} a, [b] & Kopierer adressen på b til a.\\
+\t{mov} a, b[x] & Kopierer indholdet af adressen b+x til a.\\
+\t{push} b & Kopierer b til toppen af stakken.\\
+\t{pop} a & Kopierer og fjerner toppen af stakken til a.\\
+\hline
+\multicolumn{2}{|c|}{Aritmetiske kommandoer} \\
+\hline
+\t{add} a, b & Adderer b til a og gemmer resultatet i a.\\
+\t{sub} a, b & Subtraherer b fra a og gemmer resultatet i a.\\
+\t{cmp} a, b & Sammenligner a med b.\\
+\t{mul} a, b & Multiplicerer b med a og gemmer resultatet i a.\\
+\t{div} a    & Dividerer a med et register, rest gemmes i a, modulo-værdi gemmes et andet register.\\
+\t{and} a, b & Udfører en logisk AND på a og b og gemmer resultatet i a.\\
+\t{or}  a, b & Udfører en logisk OR på a og b og gemmer resultatet i a.\\
+\t{not} a    & Udfører en logisk NOT på a og gemmer resultatet i a.\\
+\t{cmp} a, b & Sammenligner a med b ved subtraktion.\\
+\hline
+\multicolumn{2}{|c|}{Hop} \\
+\hline
+\t{call} c& (ubetinget) Hop til procedure c, og returnerer når c slutter.\\
+\t{jmp} c & (ubetinget) Hop til c\\
+\t{je} c  & Hop til c hvis lig\\
+\t{jne} c & Hop til c hvis ikke lig\\
+\t{jl} c  & Hop til c hvis mindre\\
+\t{jle} c & Hop til c hvis mindre eller lig\\
+\t{jg} c  & Hop til c hvis større\\
+\hline
+\end{tabular}
+\end{center}
+\Caption{Oversigt over de mest anvendte assemblerkommandoer i oversættelsen til assembler.}
+\label{t:asmref}
+\end{table}
+
+
+
+Alle registre er 16 bit, pånær  ax--dx, der  hver kan opdeles i to 8 bit registre.  Registrene tilgås med \t{al} og \t{ah}, \t{bl}, \t{bh} osv. hvor \t{l} (``\t{L}ow'') tilgår de nederste  8 bit og \t{h} (``\t{H}igh'') tilgår de øverste 8 bit. Registrenes navne er forskellige, ligeså er deres funktionalitet. Der skal her ikke forsøges at argumentere for brugen af de enkelte registre.
+
+Ethvert program indeholder et .DATA segment og et .CODE segment, samt en stak.
+
+\begin{description}
+\item[data] .DATA segmentet indeholder globale ``variable'' og konstanter, som f.eks. tekststrenge. 
+
+\item[code] I .CODE segmentet placeres al koden. Gennemløbet af koden under udførelse sker vha. PC registret (Program counter). 
+
+\item[stak] Stakken styres af SP registret (Stack Pointer). SP peger altid på det øverste element på stakken. SP registret tæller negativt for hvert element der lægges på stakken, således SP går mod 0.
+\end{description}
+
+
+
+
+
+\subsection{Syntaks}
+\label{ss:asm_syntaks}
+Det anvendte assemblersprogs syntaktiske grundtræk, kan let specifficeres udfra følgende EBNF grammatik:
+
+\begin{tabular}{llp{11cm}}
+\itm{S}{ \{ \i{line} \} }
+\itm{line}{$\big($ \i{label} $|$ \i{sentence} $|$ \i{procedure} $\big)$}
+\itm{label}{\i{name} ``\t{:}'' }
+\itm{sentence}{\i{command} \i{unit} $\Big[$ ``\t{,}'' \i{unit} $\Big]$}
+\itm{procedure}{\i{name} ``\t{PROC}'' \{ \i{line} \} ``\t{ret}'' \i{name} ``\t{ENDP}'' }
+\itm{command}{$\big($ ``\t{add}'' $|$ ``\t{push}'' $|$ ``\t{pop}'' $|$ ``\t{jmp}'' $|$ ``\t{call}'' $|$ \dots $\big)$}
+\itm{unit}{\i{string} $|$ \i{number} }
+\end{tabular}
+
+Hvor der for \i{name} gælder samme restriktioner som variabelnavne i Java. 
+I en \i{procedure}, må en ny procedure ikke defineres mens de to \i{name} skal være identiske.  Ved \i{sentence} med to units, angiver den første \i{unit} \textbf{destination}, mens anden \i{unit} angiver \textbf{source}. ``læg 2 til register AX'' skrives som \mbox{\t{add ax, 2}}.
+Kommentarer angives med ``\t{;}'', hvis funktion er identisk med Javas ``\t{//}''. 
+
+\i{command} var med vilje ikke angivet fuldstændigt i grammatikken, da kommandoerne og deres funktion findes i \tref{t:asmref}.
+
+
+\subsection{Hop i assembler}
+\label{ss:hopIAssembler}
+En vigtig del af assembler, er dens mulighed for at \textit{branche} eller bryde et ellers lineært afviklingsforløb af koden. I assembler findes der to måder at hoppe på, hop til en procedure, og hop til en label. Ved hop til procedurer, anvendes kommandoen \t{call}, mens kommandoerne angivet i \tref{t:asmref} anvendes til hop til labels.
+
+Ved hop til procedurer push'es adressen på PC registret, altså hvorfra hoppet blev udført. Når assembleren møder kommandoen \t{ret}, pop'es det øverste element fra stakken i PC registret, hvilket resulterer i et automatisk hop til denne adresse. Udfører man i en procedure ligeså mange \t{pop} som \t{push}, returneres der således tilbage til stedet i programmet hvorfra \t{call} blev kaldt. Dette minder om metodekald i Qjava, procedurer fasciliterer dog ikke argumenter til \t{call} som Qjava gør til metodekald.
+
+Den anden type hop er til en label et andet sted i sourcekoden. Denne type hop kan sammenlignes med \t{goto} i sprog som C/C++ og minder om ``\t{break labelnavn:}'' i Java. Denne type kald anvendes hovedsageligt til løkke konstruktioner.
+
+
+\section{Overordnet lageradministration}
+\label{s:overordnetlageradministration}
+I det følgende beskrives lager administrationen ultra kort, for så at blive uddybet i de respektive undersektioner.
+
+I CODE segmentet placeres funktioner og standardfunktioner. 
+
+I DATA segmentet placeres hoben. Da Qjava ikke implementerer \t{static} variable placeres yderligere kun simple variable til intern administration. Hoben er en stor blok hukommelse, som anvendes til repræsentation af objekter.
+
+Stakken anvendes til lokale variable samt argumenter til funktioner.
+
+Overordnet set skal følgende fire typer ting administreres: felter i objekter, lokale variable, parametre til funktioner og mellemresultater. For alle tingene gælder, at de på samme tidspunkt kan eksistere i mange instanser. Adresseringen af disse sker derfor relativt via registrene \t{bx, bp} og \t{sp}, da assemblers globale variable ikke kan anvendes. 
+
+For instanserne gælder altid at de eksisterer i form af instanser i objekter, eller i funktioner. Objekter placeres i hoben istedet for på stakken, da de skal eksistere efter funktionskald, som normalt tømmer stakken når funktionen forlades. Placeredes objekterne på stakken ville rekursive funktionkald (og dynamisk garbage collection hvis dette en dag skulle implementeres) være meget besværlige at implementere.
+
+
+\begin{quote}
+Bemærk, at mens stakken tæller nedaf, tæller hoben opad. Det betyder, at det øverste element på stakken tegnes nederst, og omvendt øverst når hoben afbilledes.
+\end{quote}
+
+
+\subsection{Klasser}
+Klasser i Qjava består af en række felter, samt en række funktionaliteter (metoder). De to størrelser hænger dog ikke så tæt sammen, som man umiddelbart skulle tro. Oprettes 1000 instanser af klassen \t{X}, oprettes kun felterne i \t{X}. Da metoderne ikke kan ændres fra instans til instans, er der ingen grund til at repræsentere dem 1000 gange. Metoders lokale variable kan ikke tilgås fra referencer til klasser, hvorfor disse ikke oprettes ved oprettelse af klasseinstanser. Klassens metoder genereres kun én gang, og placeres et sted i den genererede kode i form af procedurer.
+
+En klasses størrelse i hoben, er derfor antallet af felter i objektet multipliceret med felternes størrelse. Nedenstående klasse \t{A} fylder altså $ 2 \cdot 16$ bit = 4 bytes.
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class A
+{
+    int i;
+    String s;
+}
+.
+.
+    A klasse;
+    klasse = new A();
+\end{verbatim}\end{footnotesize}\end{quote}
+
+I de 4 bytes, placerede \t{i} først i hoben, da \t{i} defineres først og således har et lavere index nummer. Da alle variable er 16 bit optager \t{i} derfor de første 2 bytes, mens \t{s} optager de to sidste. Udføres følgende kode:
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+klasse.i = 2;
+klasse.s = "hej ib";
+\end{verbatim}\end{footnotesize}\end{quote} 
+
+tildeles \t{i} og \t{s} nye værdier, som er henholdsvis 2 og adressen på et \t{String}-objekt med indholdet \t{hej ib}. Situationen efter tildelingen, er skitseret på \fref{f:hobfig1}, som forestiller et udsnit af hoben.
+
+\begin{figure}[!h]
+\centerline{\includegraphics[angle=-90, scale=0.5]{hob1.pdf}}
+\Caption{Skitse af hoben efter tildeling af {\tt A}'s felter.}
+\label{f:hobfig1}
+\end{figure}
+
+
+\subsection{Variable}
+Variable er enten variable defineret i metoder, eller er argumenter til metoder. Variablerne skabes hvergang metoden kaldes, og dør, når metoden forlades. For begge typer variable gælder det, at en sådan opførsel elegant kan implementeres ved anvendelse af assemblers stak. Da et objekts felter gemmes i hoben istedet for på stakken, er der ingen problemer med rekursive kald. For hvert rekursive kald, ligesom for alle andre metodekald, lagres argumenterne samt lokale variable først på stakken inden metodens indhold udføres. Der er derfor ingen forskel på metoder hvad entent de er rekursive i deres natur eller ej.
+
+
+\begin{figure}[!h]
+\centerline{\includegraphics[angle=-90]{stak2.pdf}}
+\Caption{Stakken som den tager sig ud lige efter et funktionskald.}
+\label{f:stak1}
+\end{figure}
+
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class B
+{
+    int b;
+    
+    void f(int x, int y)
+    {
+        int len;
+        f(x, y);
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Stakkens udformning efter første kald af \t{B.f()} ses på \fref{f:stak1}. Registret \t{bp} peger altid på den første lokale variabel i metoden (på stakken). Og da hver variabel fylder 16 bit, kan variablene tilgås med \t{[bp-index]}, hvor \t{index} er variablens indexnummer. Indexnummeret tildeles variablene efter hvornår de defineres, således er den første varibels index nummer = 0, men den næste er $2, 4, ...$. Argumenterne til metoden kan ligeledes tilgås via \t{bp} registret, nemlig ved \t{[bp+4+index]}. De ekstra 4 adressepladser skyldes, at der skal hoppes forbi retur adressen. 
+
+Ved brug af \t{bp} pointeren, er tilgangen til variable uafhængigt af hvor lidt eller hvor meget stakken anvendes.
+
+
+\subsection{Felter}
+Variable i klasse scope blev læst og skrevet fra hoben. Styringen af hvor i hoben der læses og skrives styres af \t{bx} registret, der hele tiden indeholder `this' adressen for det aktuelle objekt. \t{bx} virker altså som \t{this} referencen gør i Java. Felter kan tilgås på to måder, i det aktuelle objekt, eller fra andre objekter. For begge tilfælde tilgås variable med kaldet \t{hob[bx+index]}, hvor \t{index} er variablens index nummer. For felter i andre objekter skal man dog først sætte \t{bx} til det andet objekts `this' adresse. Dette gøres let, da det blot er referencevariablens værdi. Altså for kaldet \t{a.i} udføres:
+
+\begin{quote} \example 
+gem \t{bx};\\
+bx = a;\\
+\t{i} kan læses/skrives med \t{hob[bx+index]}\\
+hent \t{bx};\\
+\end{quote}
+
+\subsection{Mellemresultater}
+Da mellemresultater er temporære, og kun er anvendelige på de konkrete steder, anbringes de på stakken, hvor de automatisk fjernes (med \t{pop}), når de anvendes.
+
+
+\subsection{Oprettelse af hoben}
+For simpelthedens skyld, er hobens størrelse statisk og givet ved programmets start. Alle programmer der genereres indeholder således følgende blok kode, der allokerer hoben ved programstart. Koden er placeres i DATA-segmentet.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+hobptr  dw 0
+hob     dw <HOBSIZE> dup(0)
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Hvor \t{<HOBSIZE>} er en konstant indsat af compileren, der angiver hobens størrelse i antal word. Foruden hoben, allokeres også en \t{hobptr}, en pointer, der angiver hvor meget af hoben der er i anvendelse, og som modificeres ved allokeringer. Da compileren ikke indeholder garbage collection, opbruges hoben med tiden, da ``døde'' objekter, altså objekter som ingen referencer har, ikke fjernes.
+
+
+\begin{figure}[!h]
+\centerline{\fbox{\includegraphics[angle=-90]{kodegenoversigt.pdf}}}
+\Caption{Oversigt over lageradministrationen i Qjava.}
+\label{f:kodeoversigt}
+\end{figure}
+
+\subsection{Opsummering}
+Opsumeret på \fref{f:kodeoversigt} er følgende gennemgået
+\begin{itemize}
+\item[$\blacktriangleright$] Code segmentet indeholder den genererede assemblerkoden.
+\item[$\blacktriangleright$] Data segmentet indeholder hoben, der rummer instanser af objekter samt interne variable til intern administration f.eks. hvor meget af hoben der er blevet anvendt.
+\item[$\blacktriangleright$] Stakken anvendes til opbevaring af lokale variable samt argumenter til funktioner, som tilgås \t{[bp-index]} og \t{[bp+4+index]}. 
+\item[$\blacktriangleright$] Felter tilgås med \t{hob[bx+index]}.
+\end{itemize}
+
+Der er altså blevet forklaret, \textit{hvordan} hob, stak osv. tager sig ud. I de følgende sektioner, forklares \textit{hvorledes} henholdsvis stak, hob osv. får dette indhold.
+
+\section{Referencer \& Objekter}
+\label{s:referencerogobjekter}
+Objekter ``allokeres'' med ved hjælp af proceduren \t{new}. Når \t{new} kaldes, reserveres et angivet antal bytes af hoben i en blok. Startadressen på blokken returneres, mens \t{hobptr} tælles op med størrelsen af den reserverede blok. 
+
+Referencer til objekter har som alle andre variable en størrelse på 16 bit. Men istedet for at indeholde en værdi, indeholder de adressen på blokken der blev allokeret. Følgende eksempel viser hvad der sker når koden \t{A a; (...) a = new A();} udføres, og hvor klassen \t{A}'s størrelse er 4. Værdien af \t{hobptr} ved start (i dette tilfælde 30), er blot et udtryk for, at hoben ikke er tom på tidspunktet eksemplet gennemgås.
+
+\begin{quote}\example
+\textit{Før allokering af A}\\
+\t{~~~~hobptr == 30;} \\ 
+\textit{Allokering af objekt med størrelse 4 bytes}\\ 
+\t{~~~~gem hobptr;} \\ 
+\t{~~~~hobptr = hobptr + 4;}\\ 
+\t{~~~~return gammel hobptr;}\\
+\t{~~~~a = retur-værdi;}
+\end{quote}
+
+Referencen til objektet får altså værdien 30 (adressen på hvor i hoben objektet befinder sig), mens \t{hobptr} har fået værdien 34. Når et ny objekt allokeres, bliver referencens værdi derfor 34.
+
+
+\section{Metoder \& metodekald}
+\label{s:metoderogmetodekald}
+Metoder repræsenteres i assembler med procedurer. Da det vides, at klasse navne er unikke (sektion \xref{s:sprogdef}), kan metoderne navngives som \\
+\verb£klassenavn_metodenavn£. Denne konstruktion gør det let at generere assemblerkode, når et metodekald mødes.
+
+Der findes to slags metodekald; Metodekald i eget objekt og metodekald i andre objekter . Måden de to tilfælde håndteres på er næsten ens. I det følgende tages udgangspunkt i metodekald i andre objekter, som også er skitseret på \fref{f:stak1}. Den eneste forskel på metodekald i eget og andre objekter er, at metodekald i eget objekt ikke genererer kode der ændrer værdien af \t{bx} registret (this referencen for objektet).
+
+\begin{itemize}
+\item[$\blacktriangleright$] \t{bp} gemmes, da metoden definerer sin egen \t{bp}.
+\item[$\blacktriangleright$] \t{bx} gemmes, da \t{bx} skal pege på et andet objekt.
+\item[$\blacktriangleright$] Assembler understøtter ikke argumenter til procedurer, de push'es derfor på stakken.
+\item[$\blacktriangleright$] \t{bx} sættes til værdien af referencevariablen (der indeholder this adressen) og  \t{call} udføres, hvilket medfører returadressen push'es.
+\end{itemize}
+
+I funktionen sker følgende
+\begin{itemize}
+\item[$\blacktriangleright$] \t{bp} sættes til \t{sp-2}, da dette er elementet efter retur-adressen på stakken.
+\item[$\blacktriangleright$] Antallet af lokale variable gange udføres  \t{push 0}. De lokale variable initialiseres altså til 0.
+\end{itemize}
+
+Lige før proceduren forlades udføres
+
+\begin{itemize}
+\item[$\blacktriangleright$] Antallet af lokale variable gange udføres \t{pop cx}.
+\end{itemize}
+
+Det øverste element på stakken er returadressen, der hoppes til når \t{ret} mødes. Efter et metodekald, skal \t{bx, bp} gendannes, hvilket sker med:
+
+\begin{itemize}
+\item[$\blacktriangleright$] \t{pop bx, pop bp} udføres for at genskabe ordnen i det gamle objekt så det er i samme tilstand som før metodekaldet.
+\end{itemize}
+
+
+
+\section{Udtryk og sætninger}
+\label{s:udtrykogsaetninger}
+Sætninger og udtryk opererer på værdier på stakken. Udtrykket \t{2+3} pop'er altså 2 og 3 adderer dem og push'er resultatet. 
+
+
+\subsection{Boolsk repræsentation}
+\label{ss:boolskrepraesentation}
+Måden de boolske udtryk repræsenteres på er \t{0000$\:$0000$\:$0000$\:$0000b} for false, og \t{1111$\:$1111$\:$1111$\:$1111b} for true, altså henholdvis \t{0h} og \t{FFFFh}. Tallene er valgt udfra det faktum at assemblerkommandoerne \t{neg, and, or} fungerer uden videre. Var værdierne valgt som hhv. 0 og 1 (\t{0000$\:$0000$\:$0000$\:$0001b}), ville \t{neg} ikke fungere, da \t{neg 1} giver \t{FFFEh} (\t{1111$\:$1111$\:$1111$\:$1110b}) fremfor \t{0}.
+

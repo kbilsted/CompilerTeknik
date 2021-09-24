@@ -1,0 +1,136 @@
+%
+% Rapport DAT modul 1
+%
+\documentclass{kbgreport2}
+\usepackage{amssymb}  % to get the \looparrowright character
+%\usepackage{showkeys}
+\usepackage{graphicx}
+
+%
+% Language stuff
+\usepackage[danish]{babel}
+\usepackage[latin1]{inputenc}
+\renewcommand{\bibname}{Litteraturliste}
+\def\abstractname{Abstrakt}%
+
+
+
+%
+% For the figures in the report
+\usepackage[all]{xy}
+\CompileMatrices
+
+
+%
+% Page layout
+\setlength{\parskip}{0.17cm}
+\setlength{\parindent}{0cm}
+\addtolength{\textheight}{.6cm}
+\addtolength{\textwidth}{.3cm}
+\reversemarginpar		% make margin notes types on opposite side
+\fussy
+
+
+%
+%% defininng my own command here
+% making "example #?.?" in a marginnote!
+\newcounter{example}[chapter]
+\newcommand{\example}
+{
+	\refstepcounter{example}
+	\marginpar{\textsc{\vskip 6pt Eksempel \#\arabic{chapter}.\arabic{example}:}}
+}
+
+\newcommand*{\OverviewLine}{\hspace*{-2.5cm}\rule[1mm]{13cm}{1pt}\rule[1mm]{0.5cm \ Oversigt\ }{1pt}}
+\newcommand*{\OverviewLineNoTitle}{\hspace*{-2.5cm}\rule[1mm]{15.09cm}{1pt} }
+%\newcommand*{\OverviewLineNoTitle}{}
+
+%
+% MAKROER FOR 
+% teori.tex og parser.tex
+% XY-Arrow defs til træer
+\def\DOWN{\ar@{-}[d]}
+\def\DOWNR{\ar@{-}[dr]}
+\def\DOWNRR{\ar@{-}[drr]}
+\def\DOWNL{\ar@{-}[dl]}
+\def\DOWNLL{\ar@{-}[dll]}
+\def\DOWNLLL{\ar@{-}[dlll]}
+
+\newcommand*{\XYBOX}[1]{*+[F]{\txt{#1}}}
+
+\newcommand*{\tom}{$\epsilon$}
+\newcommand*{\itm}[2]{#1 & $\rightarrow$ & #2\\}
+\renewcommand*{\i}[1]{$\langle$#1$\rangle$}
+\newcommand*{\ii}[2]{$\langle$#1$_{#2}\rangle$}
+\newcommand*{\showspace}{\begin{footnotesize}$_\sqcup$\end{footnotesize}}
+\newcommand*{\underscore}{$\underline{~}$}
+
+\newenvironment{EBNFtable}{\begin{tabular}{llp{10.6cm}} }{\end{tabular}}
+\newcommand*{\EBNF}[2]{\begin{EBNFtable} \itm{#1}{#2} \end{EBNFtable}}
+
+\newenvironment{code}{\begin{quote}\example\begin{footnotesize}\refstepcounter{example}}{\end{footnotesize}\end{quote}}
+
+
+
+%
+% Essential macros for the report
+\renewcommand*{\t}[1]{\texttt{#1}}
+%\renewcommand*{\sf}[1]{\textsf{#1}}
+\newcommand*{\Caption}[1]{\caption{\textit{#1}}}
+
+
+% henvisninger
+\newcommand*{\kref}[1]{kapitel \ref{#1} side \pageref{#1}}
+\newcommand*{\aref}[1]{appendix \ref{#1} side \pageref{#1}}
+\newcommand*{\fref}[1]{figur \ref{#1} side \pageref{#1}}
+\newcommand*{\tref}[1]{tabel \ref{#1} side \pageref{#1}}
+% any reference
+\newcommand*{\xref}[1]{\ref{#1} side \pageref{#1}}
+
+  \usepackage{fancyhdr}
+  \pagestyle{fancy}
+  \renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
+  \renewcommand{\headrulewidth}{1pt}
+  \fancyhead[LE,RO]{\scshape side \thepage}
+  \fancyhead[RE,LO]{\scshape \leftmark}
+  \cfoot{}
+
+
+% mangler l^^f8k-ke-kon-struk-ti-o-ner 
+\hyphenation{krum-spring tekst-be-hand-lings-pro-gram}
+
+\begin{document}
+\input{forside}
+\input{forord}
+\tableofcontents
+\input{indledning}
+\input{struktur}
+\input{lexer}
+\input{qjavaspecifikation}
+\input{parser}
+\input{semantik}
+\input{assembler}
+\input{kodegenerering}
+\input{korselsvejledning}
+\input{afprovning}
+\input{hastighedstest}
+\input{perspektivering}
+\input{konklusion}
+\input{biblo}
+
+\begin{appendix}
+\input{a_qjava}
+\input{a_compilerfacade}
+\input{a_lexer}
+\input{a_token}
+\input{a_tokennames}
+\input{a_parser}
+\input{a_tree}
+\input{a_symboltable}
+\input{a_asmblock}
+\input{a_codegenerator}
+\input{a_qjavaoutput}
+\input{a_asmprimtalstest}
+\end{appendix}
+
+\end{document}

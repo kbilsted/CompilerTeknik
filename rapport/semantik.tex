@@ -1,0 +1,88 @@
+\chapter{Semantisk analyse}
+\label{c:semantisk_analyse}
+
+\OverviewLineNoTitle
+
+\section{Semantik}
+
+Udfra grammtikken i \tref{t:samletGrammar}, kan følgende program konstrueres.
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class A 
+{
+    void f()
+    {
+        int i;
+        break;
+    } 
+    
+    void g()
+    {
+        i = 2;
+    }    
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Programmet er syntaktisk korrekt, men giver ingen mening, hvis man skulle forklare hvad det  udførte. Den syntaktiske analyse er altså i sig selv ikke en garanti for et korrekt program. Mange af sådanne problemer kunne sikkert håndteres i grammatikken, som f.eks. at \t{break} kun må eksisterer indenfor et while-scope. Næste eksempel viser hvorledes dette gøres ved at substituere \i{sentences} og \i{while} fra \tref{t:samletGrammar}.
+
+\medskip
+\example\begin{EBNFtable}
+\itm{sentences}{$\big\{$\i{vardef}$|$\i{fnccall}$|$\i{if}$|$\i{while}$|$\i{return}$|$\i{assign}$|$``\t{;}''\big\} }
+\itm{whilesentncs}{$\big\{$\i{vardef}$|$\i{fnccall}$|$\i{if}$|$\i{while}$|$\i{break}$|$\i{return}$|$\i{assign}$|$``\t{;}''\big\} }
+\itm{while}{``while'' ``\t{(}'' \i{E} ``\t{)}'' ``\{'' $\big[$ \i{whilesentncs}  $\big]$ ``\}''}
+\end{EBNFtable}
+\medskip
+
+Grammatikken vil dog på denne måde hurtigt vokse sig uoverskuelig stor og kompleks. Det andet problem i første eksempel er, at variablen \t{i} sættes til værdien 2 udenfor scopet den er defineret i. Et sådan problem vil ikke kunne løses lige så let, om overhovedet muligt. Sådanne problematikker bør overlades til den semantiske fase, altså fasen der kontrollerer meningen med sætningerne, fremfor at klare det i den syntaktiske kontrol. 
+
+Den semantiske kontrol er i Qjava compileren begrænset til de sideeffekter, der opstår ved anvendelse af \t{SymbolTable} klassen.
+
+
+\section{Klassen SymbolTable}
+\t{SymbolTable} klassen opbygges under parsningen. Hvergang en \i{vardef} mødes, kaldes  \t{SymbolTable}'s følgende metode \t{add(Variabeltype, Klassenavn, Metodenavn, Variabelnavn)}.  \t{SymbolTable} indeholder information om hvor hvilke variable allokeres i hvilke scope, samt  rækkefølgen herfor. Foruden \t{remove()} indeholder klassen følgende metoder 
+
+\begin{description}
+\item[\t{typeCheck()}] Kontrollerer om en variabel i et givent scope er af en given type. 
+\item[\t{varType()}] Returnerer typen på en bestemt variabel. 
+\item[\t{fncSize()}] Returnerer antallet af variable \t{*} 2 defineret i den angivne metode. 
+\item[\t{classSize()}] Returnerer antallet af variable \t{*} 2 defineret i den angivne klasse.
+\item[\t{varIndex()}] Returnerer hvornår den angivne variabel blev defineret i det angivne scope.
+\end{description}
+
+Heraf anvendes de sidste fire metoder i \t{CodeGenerator} klassen, hvor den første metode er tiltænkt fremtidig brug. Grunden til Funktionerne returnerer værdier dobbelt så store som de reelt er, skyldes, at alle variable fylder 2 bytes i assembler oversættelsen.
+
+
+\section{Semantikkontrol i Qjava compileren}
+Semantikkontrollen i Qjava, eller rettere de mekanismer der finder sted, hvis sideeffekter ligner semantikkontrol, er af følgende to typer: 1) manglende hoplabel, 2) manglende index nummer.
+
+
+\subsection{Manglende hoplabel}
+Når koden for \t{while} genereres, skal den label der skal hoppes til hvis \t{break} mødes, specificeres. Dette er den kun hvis der genereres kode i en while-løkke. Mødet \t{break} udenfor en while-løkke, er den label der skal hoppes til lig \t{null}, og der meldes fejl.
+
+\subsection{Manglende index}
+Når kodegeneratoren møder \mbox{\t{i = 2}}, kaldes\\ \t{varIndex(Klassenavn, metodensnavn, variabelnavn)}, det kunne f.eks. være \t{varIndex("A", "g", "i"}, altså hvornår i klassen \t{A} i metoden \t{g()} blev variablen \t{i} erklæret. Er returværdien $== -1$, altså ikke fundet, kan det sluttes, at \t{i} forsøges anvendt uden for det scope det blev defineret i. Dog skal man forinden denne konklusion forvisse sig, at variablen ikke er et felt (og således anvendes i et korrekt scope). Dette gøres let ved metodekaldet \t{varIndex("A", null, "i")}. Er resultatet stadig $-1$, anvendes \t{i} i et scope hvor \t{i} ikke er defineret.
+
+
+
+\section{Implementation \t{SymbolTable}}
+Symboltabellen er en vektor indeholdende \t{Symbol}. Hver \t{Symbol} indeholder de nødvendige felter til at kunne beskrive en variabel fuldt ud. Felterne er variabel type, variabel navn, klassen hvori den er defineret, funktionen hvor den er defineret, og slutteligt hvornår variablen blev erklæret.
+
+Metoderne \t{classSize(), fncSize()} leder hele vektoren igennem og summerer hhv. alle klassefelter og funktionsvariable. \t{varIndex()} leder vektoren igennem og returnerer det fundne elements \t{index} felt eller -1 ved mislykkedes søgning (lignende sker i \t{varType(), typeCheck()} metoderne, bare med andre felter end \t{index} feltet). Klassen er konstrueret på en sådan vis, at brute force søgningen let kan erstattes af f.eks. \t{HashTable} for at opnå hastighedsforøgelse ved \t{varIndex(), varType() og typeCheck()} metoderne. Da størrelsen af funktioner og klasser ikke kan ændres under eller efter compileringstidspunktet, kunne \t{classSize(), fncSize()} implementeres ved at gemme de konstante værdier i en \t{HashTable}. Dette ville dog kræve ekstra kode, der kunne fortælle \t{SymbolTable} af parsningen var tilendebragt. I det følgende vises et udsnit af \t{SymbolTable}.
+
+\begin{verbatim}\begin{footnotesize}
+private Vector list = new Vector(); // contains elements
+
+protected class Symbol
+{
+    int index;
+    String fromClass, fromFnc, name, type;
+
+    // konstruktør
+    Symbol(String t, String fC, String fF, String n, int i)
+    {type = t; fromClass = fC; fromFnc = fF; name = n; index = i;}
+}
+    
+\end{footnotesize}\end{verbatim}
+
+Den fulde kode findes i \aref{a:symboltable}.
+

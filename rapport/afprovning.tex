@@ -1,0 +1,793 @@
+\chapter{Afprøvning}
+
+\label{c:afprovning}
+Dette kapitel vil vise test af compilerens enkelte dele samt tilsidst den færdige version. 
+
+\begin{itemize}
+\item[$\circlearrowright$] Lexer, sektion \xref{s:testlexer}.
+\item[$\circlearrowright$] Parser , sektion \xref{s:testparser}.
+\item[$\circlearrowright$] Symbol tabel , sektion \xref{s:testsymboltabel}.
+\item[$\circlearrowright$] Kodegenerering, sektion \xref{s:testkodegenerering}.
+\end{itemize}
+\OverviewLine
+
+Alle testkørsler er, medmindre andet er noteret, udført efter principperne ``ekstern testning''  der kort er beskrevet i \cite{hbhansen}. Testmetoden tager ikke udgangspunkt i programkoden, men i programkodens funktionalitet. Koden er altså reduceret til en ``blackbox'', hvor det er transformationen fra input til output er i fokus. Der testes således for om basistilfælde kendes, men ikke kombinationer imellem disse. Det vil sige, hvis programmet kan genkende tallet \t{42}, kan den også genkende alle andre tal, og genkender den \t{1+2}, genkender den også alle andre kombinationer af to tal og + operatoren.
+
+I lexeren testes der for 1) kan alle keyword/operatorer genkendes, 2) kan strenge/tal genkendet,  og 3) seppereres ordene rigtigt.
+
+Parseren testes med en, efter grammatikken syntatisk korrekt, program kode. Der testes altså for  1) om parseren kan parse koden problemfrit, 2) om parseren genkender de korrekte produktioner og 3) om den tildeler prioriteterne for operatorene korrekt.
+
+Symboltabellen testet for om dens metoder fungerer korrekt.
+
+Afprøvningsstrategien for kodegeneratoren er ikke en tilbundsgående undersøgelse af alle semantiske tilfælde. Målet med testen er at se om der kan genereres fungerende kode for operatorer, standardfunktioner og basistilfælde af grammatikkens sætninger og udtryk. Afgrænsningerne i afprøvningen afbegrænser dermed også pålideligheden af compileren til afgrænsningen af afprøvningen.
+
+
+\section{Lexer}
+\label{s:testlexer}
+Før selve testargumentationen fremføres, forklares måden testresultaterne er forelagt på. I
+Tabel \ref{t:test_lexResultater} er hver celle opdelt i to dele. ``\#'' noterer hvor mange tokens lexeren har genkendt, mens  ``Val'' angiver den hvad token blev genkendt som. I visse tilfælde er der knyttet ekstra information til et token, disse informationer er placeret imellem ``()''.
+
+Til afprøvningen af klassen er tre forskellige testdata filer anvendt. Den første testdata fil er opdelt i tre faser:
+
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+/* Test datafil 1
+ * for den lexikalske analyse...
+ */
+
+// Første fase - tegnsekvenser
+, . ; : ( ) { } [ ]
++ - * / < % = != == <=
+&& || & | ! break char class
+else if int new null return
+String void while
+
+// Anden fase - værdi-test (char, tal og strenge)
+'A' 12 "a str"
+
+// Tredie fase - variabelnavn/separatorer test
+foo2  2foo (foo foo( yif
+ify 2int ((
+a.b    c.d()    a. +
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+Første fase består i at genkende alle reserverede tegnsekvenser (hvis kommentarer genkendes ignoreres disse). Dette er Tokens 0--36 i tabel \ref{t:test_lexResultater}. Det bemærkes at de to sæt kommentarer i starten af testfilen ikke har givet anledning til noget output, dvs. lexeren genkender kommentarer. Endvidere ses det at 1 og 2 returns samt 1 space betragtes som separator og ``whitespace'' hvorfor de ignoreres.
+
+Anden fase består i værdi-genkendelse, altså om lexeren forstår tal, strenge og tegn. Dette er token 37--39. Det ses testdata blev genkendt som hhv. \t{A}, \t{12} og \t{Str val} som i testfilen.
+
+Den sidste fase er en kombineret test af om variabelnavne kan genkendes, og hvad der er seperatorer. Token 40 viser, at tal i slutningen af en tegnsekvens ikke er en separator.  Token 41--42 viser, at tal er en sepperator, hvis det kommer først i tegnsekvensen, dette ses ved tegnsekvensen opsplittes i to Tokens. Token 43--46 er en lignende test, hvor der istedet  anvendes en operator istedet for tal, i dette tilfælde en ``\t{(}''. De to tegnsekvenser giver  fire tokens, hvorfor det konkluderes, at operatorer altid virker som sepperatorer. Token 46--47 viser, at lexeren genkender den længst mulige tegnsekvens, da \t{if}-delen i begge tegnsekvenser ikke resulterede i et \t{if}-token. Token 49--50 viser tal og keywords separeres korrekt. Token 51--52 viser dobbelt operator virker, 53--54 viser genkendelsen af \i{name}, mens 26, 30, 34, 57 viser genkendelsen af \i{id}.
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|rl|rl|rl|rl|}
+\hline
+\# & Val & \# & Val & \# & Val & \# & Val \\
+\hline
+0 & , & 1 & . & 2 & ; & 3 & :\\ \hline
+4 & ( & 5 & ) & 6 & \{ & 7 & \}\\ \hline
+8 & [ & 9 & ] & 10 & $+$ & 11 & $-$\\ \hline
+12 & * & 13 & / & 14 & $<$ & 15 & \%\\ \hline
+16 & = & 17 & != & 18 & == & 19 & <=\\ \hline
+20 & \&\& & 21 & $||$ & 22 & \& & 23 & $|$\\ \hline
+24 & ! & 25 & break & 26 & id (char) & 27 & class\\ \hline
+28 & else & 29 & if & 30 & id (int) & 31 & new\\ \hline
+32 & null & 33 & return & 34 & id (String) & 35 & void\\ \hline
+36 & while & 37 & chVal('A') & 38 & intVal(12) & 39 & StrVal(a str)\\ \hline
+40 & id (foo2) & 41 & intVal(2) & 42 & id (foo) & 43 & (\\ \hline
+44 & id (foo) & 45 & id (foo) & 46 & ( & 47 & id (yif)\\ \hline
+48 & id (ify) & 49 & intVal(2) & 50 & id (int) & 51 & (\\ \hline
+52 & ( & 53 & name (a.b) & 54 & name (c.d) & 55 & (\\ \hline
+56 & ) & 57 & id (a.) & 58 & $+$ & 59 & <EOF>\\ \hline
+\end{tabular}\end{center}
+\Caption{Testudskrift for klassen {\tt Lexer}.}
+\label{t:test_lexResultater}
+\end{table}
+
+
+\subsubsection{Testkørsel 2}
+Resultatet af testkørsel 2 er:\\
+\t{Error(1): Char definition more than 1 character long.}
+
+\subsubsection{Testkørsel 3}
+Resultatet af testkørsel 3 er:\\
+\t{Error(1): keyword "switch" is not yet supported.}
+
+For begge testkørsler gælder det, at compileren stoppede kørslen efter udskrift.
+
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+/* 2. testfil */
+'aa'
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+/* 3. testfil */
+switch i;
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+\subsection{Ikke-problematiske fejl}
+En fejl den anvendte testmetode ikke fangede er tilfælde såsom \t{<\showspace =} Altså hvor de to tokens klart er separeret af en space (\showspace ). Lexeren oversætter dog det angive eksempel til et \t{<=} token. For implementationen af compileren er dette ikke noget problem da det ikke strider imod principperne for fejlmelding i kravsspecifikationen. Endvidere tillader Javasyntaxen ikke en sådan konstruktion. Slutteligt kunne man med rette hævde, at skriver man \t{<\showspace =} mener man faktisk \t{<=}.
+
+Forklaringen på opførslen finder vi i koden, hvor der her kun vises de for problemstillingen væsenligste dele (for en fuld kodeudskrift af lexerens testkode henvises til \aref{a:lexer}. \t{fetchOperator()} bliver kaldt i de situationer hvor Lexeren har læst et ``\t{<}'' --- altså situationer hvor der muligvis er tale om et sammensat token.
+
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class Lex extends StreamTokenizer implements TokenNames
+{
+...
+  private Token fetchOperator(char c) throws IOException
+  {
+    int nt = super.nextToken();
+...
+    String s = "" + c + (char) nt;
+...
+    if(s.equals("<=")) return( new Token(LEQUAL) );
+...
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Som det ses, er det \t{StreamTokenizer} der står for indlæsningen, og da denne 1) ignorerer spaces 2) stopper og returnerer for hver operator, har man ingen mulighed for at vide om \t{StreamTokenizer}'en har mødt \t{<\showspace =} eller \t{<=} konstruktionen.
+
+Da der i forhold til kravsspecifikationen ikke opstår vanskeligheder, uddybes problemstillingen ikke videre.
+
+
+
+\section{Parser}
+\label{s:testparser}
+Testen af parseren tager udgangspunkt i følgende testfil,
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+/*
+ * test for parseren 23.11.99
+ */
+
+class A
+{
+    int i;// vardef i classscope
+    ;
+    void a() // fncdef uden argumenter
+    {
+        a(); // fnccall til eget og andre objekter
+        b(1, 2,3);
+        B.c();
+
+        if(a) // if
+        {
+            aaa = 2; // assign
+        }
+        else
+        {
+            B.j = 3; // assign i andet objekt
+        }
+    }
+
+
+
+    void b(int k, String l) // fncdef med argumenter
+    {
+        break;
+        return;
+
+        while(i != 2) // en while
+        {
+            return(); // return med parenteser
+        }
+
+        ; // tom linie (kun ";")
+    }
+}
+
+
+// multible klasser
+class B
+{
+    void c()
+    {
+        // vardef i function scope
+        int j;
+        int k;
+
+        // E-E11     testes
+        e = 1 || 2;
+        e1 = 3 && 4;
+        e2 = 5 | 6;
+        e3 = 7 & 8;
+        e4_1 = 9 == 10;
+        e4_2 = 11 != 12;
+        e5_1 = 13 < 14;
+        e5_2 = 15 <= 16;
+        e6_1 = 17 + 18;
+        e6_2 = 19 - 20;
+        e7_1 = 21 * 22;
+        e7_2 = 23 / 24;
+        e7_3 = 25 % 26;
+
+        e8 = new B();
+        e9_1 = !27;
+        e9_2 = -28;
+        e10_1 = foo;
+        e10_2 = foo.bar;
+        e10_3 = foo(29+30);
+        e10_4 = foo(31, 32);
+        e10_5 = "en streng";
+        e11_1 = 2;
+        e11_2 = (3);
+
+        // en kombinations af flere E'er
+        if( (a != 2 && b == 3) || (c < -2|3) || !(d <= e&4%5*6+7- -8/9) )
+        {
+            int x;
+        }
+        else
+        {
+        }
+
+        i = 2+3*4;
+        i = (2+3)*4;
+        i = 2-3-4;
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+For at kunne vurdere resultaterne, fortæller parseren hvorledes den opfatter et givent udtryk, f.eks. med \t{(assign)}. Endvidere sættes parenteser om alle monadiske og duale operatorer for at kunne vise prioriteten i evalueringsrækkefølgen. For læsbarhedens skyld, er testoutput modificeret med ekstra indrykninger og tilpasning af linieskift.
+
+Gennemgangen af afprøvningen foregår, af hensyn til overblikket, udfra grammatikken på \fref{t:samletGrammar}, istedet for en kronologisk opremsning af eksemplet. Der henvises iøvrigt til hele \kref{c:qjavaspecifikation} for gennemgangen af grammatikken. I gennemgangen vises det, at hver non-terminal eksisterer i eksemplet, og at alle definitionerne på non-terminalen eksisterer (f.eks. kan \i{sentece} repræsenteres ved både \i{while} og \i{fnccall} osv). Argumentationsformen er meget kompakt i den forstand, at non-terminalen opskrives, hvorefter beviset for at non-terminalen eksisterer, og at alle definitioner er afprøvet. Non-terminalens definition gennemgås ikke, da en sådan gennemgang er at finde i kapitel \ref{c:qjavaspecifikation}.
+
+\begin{itemize}
+\item[\i{S}] Eksemplet indeholder klasserne \t{A}, \t{B}.
+\item[\i{classdef}] Klassen \t{A} dækker definitionen.
+\item[\i{classcontents}] \t{A.i} opfylder \i{vardef}, \t{A.a()} opfylder \i{fncdef} og ``\t{;}'' forefindes i klasse scope i \t{A}.
+\item[\i{vardef}] Variablen \t{A.i} opfylder \i{vardef}
+\item[\i{fncdef}] Funktionerne \t{A.a()}, \t{A.b()} defineres hhv. uden og med argumenter.
+\item[\i{sentences}] \i{vardef}, \i{fnccall}, ... , ``\t{;}'' forefindes i eksemplet.
+\item[\i{fnccall}] Øverst i \t{A.a()} repræsenterer \t{a()}, \t{B.c()} hhv. \i{id} og  \i{name}. kombinationen. \t{b(1, 2,3);} viser, der accepteres multible argumenter.
+\item[\i{if}] \t{if(a)...} i \t{A.a()} og \t{if( (a != 2...)} nederst i \t{B.c()} viser \t{if} med og uden \t{else}-krop.
+\item[\i{while}] Eksisterer i \t{A.b()}.
+\item[\i{break}] Findes i \t{A.b();}.
+\item[\i{return}] Findes med og uden \t{()} i \t{A.b()}.
+\item[\i{assign}] Variablen \t{aaa} tildeles i \t{A.a()}.
+\item[\i{E}-\i{E$_{11}$}] Er repræsenteret i \t{B.c()}
+\end{itemize}
+
+Resultatet viser de to næstsidste tildelingssætninger (\t{2+3*4}) i eksemplet, at prioriteten for evaluering kan ændres ved hjælp af parenteser. Den sidste tildelingssætning (\t{2-3-4}) viser, at udtryk med flere operatore med ens prioritet, placeres korrekt i parsertræet. Slutteligt er det lange sammensatte if-udtryk medtaget for at vise, at operatorene kan sammensættes uden problemer.
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+class A
+{
+    (vardef) int i
+
+    (fncdef) void a()
+    {
+        (fnccall) a()
+        (fnccall) b(1, 2, 3)
+        (fnccall) B.c()
+        if(a)
+        {
+            (assign) aaa = 2
+        }
+        else
+        {
+            (assign) B.j = 3
+        }
+    }
+
+    (fncdef) void b(int k, String l)
+    {
+        break
+        return
+        while((i != 2))
+        {
+            return
+        }
+    }
+}
+
+class B
+{
+    (fncdef) void c()
+    {
+        (vardef) int j
+        (vardef) int k
+        (assign) e = (1 || 2)
+        (assign) e1 = (3 && 4)
+        (assign) e2 = (5 | 6)
+        (assign) e3 = (7 & 8)
+        (assign) e4_1 = (9 == 10)
+        (assign) e4_2 = (11 != 12)
+        (assign) e5_1 = (13 < 14)
+        (assign) e5_2 = (15 <= 16)
+        (assign) e6_1 = (17 + 18)
+        (assign) e6_2 = (19 - 20)
+        (assign) e7_1 = (21 * 22)
+        (assign) e7_2 = (23 / 24)
+        (assign) e7_3 = (25 % 26)
+        (assign) e8 = new B()
+        (assign) e9_1 = (! 27)
+        (assign) e9_2 = (- 28)
+        (assign) e10_1 = foo
+        (assign) e10_2 = foo.bar
+        (assign) e10_3 = foo((29 + 30))
+        (assign) e10_4 = foo(31, 32)
+        (assign) e10_5 = "en streng"
+        (assign) e11_1 = 2
+        (assign) e11_2 = 3
+        if(((((a != 2) && (b == 3)) || ((c < (- 2)) | 3)) ||
+        (! ((d <= e) & ((((4 % 5) * 6) + 7)         - ((- 8) / 9))))))
+        {
+            (vardef) int x
+        }
+        else
+        {
+        }
+
+        (assign) i = (2 + (3 * 4))
+        (assign) i = ((2 + 3) * 4)
+        (assign) i = ((2 - 3) - 4)
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+\section{SymbolTable}
+\label{s:testsymboltabel}
+Med udgangpunkt i eksemplet i sektion \ref{s:testparser}, afprøves symboltabellen.
+
+Efter endt parsing udføres følgende kode, hvor \t{sbtb} er \t{SymbolTable}, altså symboltabellen.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+System.out.println("1. A = "         + sbtb.classSize("A"));
+System.out.println("2. B = "         + sbtb.classSize("B"));
+System.out.println("3. B.c() = "     + sbtb.fncSize("B","c"));
+System.out.println("4. B.c().x = "   + sbtb.varIndex("B","c","x"));
+System.out.println("5. B.k = "       + sbtb.varIndex("B", null, "k"));
+System.out.println("6. vartype i = " + sbtb.varType("A", "a", "i"));
+sbtb.add("char", "A", null, "c", 42);
+System.out.println("7. A.c = "       + sbtb.varIndex("A", null, "c"));
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Hvilket gav følgende output
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+1. A = 2
+2. B = 0
+3. B.c() = 6
+4. B.c().x = 4
+5. B.k = -1
+6. vartype i = int
+7. A.c = 42
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Forklaringen af linierne:
+\begin{enumerate}
+\item \t{A} indeholder \t{i} == 2 bytes.
+\item \t{B} indeholder ingen felter.
+\item Variablen \t{x} er defineret som den tredie variabel i scope'et \t{B.c()} og får indexværdien 4 (variable indexeres 0, 2, 4, 6, ...). Det bemærkes, at selvom \t{x} befinder sig i et \t{if}-scope, anvendes det i compileren som værende erklæret i \t{B.c()}'s scope.
+\item Variablen \t{k} findes ikke i \t{B}'s klasse scope.
+\item Der returneres den rigtige type, da \t{i} erklæres som \t{int}.
+\item Metoden \t{SymbolTable.add()}, hvor index nummeret selv kan fastsættes virker.
+\end{enumerate}
+
+
+\section{CodeGenerator}
+\label{s:testkodegenerering}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+class A
+{
+    String space;
+    String strfalse;
+    String strtrue;
+
+    void f()
+    {
+        int i;
+        int j;
+
+        // 00000000 00000100 (4) OR 00000000 00000010 (2) = 00000000 00000110 (6)
+        System.out.print( Integer.toString(4|2) );  // | test
+        System.out.print(space);
+
+        // 00000000 00001100 (12) AND 00000000 00001010 (10) = 00000000 00001000 (8)
+        System.out.print( Integer.toString(12&10) );// & test
+        System.out.print(space);
+
+        System.out.print( Integer.toString(1+1) );  // + test (2)
+        System.out.print( Integer.toString(4-1) );  // - test (3)
+        System.out.print( Integer.toString(2*3) );  // * test (6)
+        System.out.print( Integer.toString(25/5) ); // / test (5)
+        System.out.print( Integer.toString(23%8) ); // % test (7)
+        System.out.print( Integer.toString(6- -2) );// - (fortegn) test (8)
+        System.out.print(space);
+
+
+        // ! test på bits 11111111 11111000 (65528) = 00000000 00000111 (7)
+        System.out.print( Integer.toString(!65528) );
+        System.out.print(space);
+        System.out.print(space);
+
+
+
+        // == test 1
+        j = 1;
+        if(j == 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+        // == test 2
+        j = 0;
+        if(j == 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+        // != test 1
+        j = 0;
+        if(j != 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // != test 2
+        j = 1;
+        if(j != 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+
+        // < test 1
+        j = 0;
+        if(j < 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+        // < test 2
+        j = 1;
+        if(j < 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+
+        // <= test 1
+        j = 0;
+        if(j <= 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // <= test 2
+        j = 1;
+        if(j <= 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // <= test 3
+        j = 2;
+        if(j <= 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+
+        // ! test på boolske udtryk 1, false
+        if(!(1 == 1)){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // ! test på boolske udtryk 2, false
+        if(!(1 == 0)){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+
+
+        // && test 1
+        j = 0;
+        if(j == 1 && j == 0){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // && test 2
+        j = 0;
+        if(j == 1 && j == 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // && test 3
+        j = 0;
+        if(j == 0 && j == 0){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+
+
+        // || test 1
+        j = 0;
+        if(j == 1 || j == 0){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // || test 2
+        j = 0;
+        if(j == 1 || j == 1){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+
+
+        // || test 3
+        j = 0;
+        if(j == 0 || j == 0){System.out.print(strtrue);}
+        else{System.out.print(strfalse);}
+        System.out.print(space);
+        System.out.print(space);
+
+
+
+        // while test, udskriver 0
+        j = 0;
+        while(j == 0)
+        {
+            System.out.print( Integer.toString(j));
+            j = j + 1;
+        }
+
+
+        // while test, udskriver intet
+        j = 6;
+        while(j < 5)
+        {
+            System.out.print( Integer.toString(j));
+            j = j + 1;
+        }
+        System.out.print(space);
+
+
+        // while test, udskriver 1..5
+        j = 0;
+        while(j < 5)
+        {
+            System.out.print( Integer.toString(j));
+            j = j + 1;
+        }
+        System.out.print(space);
+        System.out.print(space);
+
+
+        // test af break, udskriver intet
+        j = 0;
+        while(j < 5)
+        {
+            break;
+            System.out.print( Integer.toString(j));
+        }
+
+
+        // test af return, udskriver ikke mere
+        return;
+        j = 42;
+        System.out.print( Integer.toString(j));
+    }
+
+
+    // test af metode med argumenter
+    void g(int x, int y)
+    {
+        int pp;
+        pp = 3;
+        System.out.print( Integer.toString(pp));
+        System.out.print( Integer.toString(x));
+        System.out.print( Integer.toString(y));
+        System.out.print(space);
+    }
+
+
+    void main()
+    {
+        String s;
+        String s2;
+        s = "Datama";
+        s2 = "t!";
+        space = " ";
+
+        int i;
+        i = s.length();
+        System.out.print( Integer.toString(i) );
+        System.out.print(space);
+
+        s = s.concat(s2);
+        System.out.print(s);
+        System.out.print(space);
+
+        i = s.length();
+        System.out.print( Integer.toString(i) );
+        System.out.print(space);
+
+        // print ascii value of t == 116
+        char c;
+        c = s.charAt(2);
+        System.out.print( Integer.toString(c));
+        System.out.print(space);
+
+        strfalse = "F";
+        strtrue = "T";
+
+
+
+        f();
+
+        B bptr;
+        bptr = new B();
+
+        g(2,1);
+
+        bptr.g();
+    }
+}
+
+
+class B
+{
+    void g()
+    {
+        String s;
+        s = "hej fra objekt B";
+        System.out.print(s);
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Assemblerkoden for ovenstående programkode fylder ikke mindre end 2100 liniers kode, hvilket ville svare til ca. 37 sider hvis den skulle bringes i rapporten. Udbyttet ville tillige være tvivlsomt efter koden er genereret efter helt faste principper og således gentager sig selv i de mange sætningskonstruktioner der er næsten identiske. Derfor bringes udelukkende resultatet af kodens afvikling (hvor ny linie er indsat før test af \t{while})
+\begin{verbatim}
+6 Datamat! 8 116 6 8 236578 7  TF  TF  TF  TTF  FT  FFT  TFT
+0 01234  321 hej fra objekt B
+\end{verbatim}
+
+Sammenstilles resultatet med ovenstående eksempel, ses det hurtigt, at generatoren producerer den rigtige kode. Specielt ved de logiske operatorer og \t{while} sætninger, er det vigtigt at teste mere end et tilfælde.
+
+Principielt mangler der en test af \t{if}, men efter at have noteret alle ovenstående resultater som korrekte er det rimeligt at antage, at også kodegenereringen for \t{if} fungerer.
+
+Visse test fremgår ikke eksplicit, hvorfor de kort opridses her: Variablene \t{space, i} er henholdsvis fra klasse og funktions scope. Metoderne \t{f(), g()} repræsenterer henholdsvis metoder med 0 og multible argumenter. Metoden \t{B.g()} repræsenterer kald af metode i andet objekt.
+
+
+
+\subsection{\t{Sytem.in.read(), System.exit()}}
+Den følgende kode venter på brugeren taster en tast, og skriver derefter ASCII værdien af tasten ud på skærmen. Ved at give input ``A'', udskrev programmet \t{65} på skærmen. Ifølge opslagt i en ASCII tabel, er dette korrekt. Tallet blev kun udskrevet en gang på skærmen, hvilket viser, \t{System.exit()} metoden ligeledes fungerer.
+
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+class InReadTest
+{
+    static void main()
+    {
+        char c;
+        c = System.in.read();
+        
+        // print ascii value
+        System.out.print( Integer.toString(c) );
+        Syste.exit();
+        System.out.print( Integer.toString(c) );
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+
+\section{Andre test}
+\label{s:testJmpProblemer}
+\t{while}-løkker implementeres således, at i deres slutning indsættes en kendt label, der hoppes til, hvis udtrykket er falsk og whileløkken skal stoppes, eller der mødes en \t{break}. I princippet er dette uproblematisk. Men i assembler i ``protected mode'', er der en grænse for hvor langt et hop må være. Bliver der derfor for langt mellem hop og label, melder assembleren fejl. En sådan fejl opnås hvis følgende lille program forsøges assembleres. TASM skriver
+
+\begin{verbatim}
+**Error** foobar.asm(213) Relative jump out of range by 003Dh bytes
+Error messages:    1
+Warning messages:  None
+Passes:            1
+Remaining memory:  411k
+\end{verbatim}
+
+\newpage
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class A
+{
+    void main()
+    {
+        String space;
+        space = "*";
+        String no;
+
+        int p;
+        int div;
+        p = 1;
+
+        while(p < 100)
+        {
+            div = 2;
+
+            while(div != p && p%div != 0)
+            {
+                div = div + 1;
+            }
+
+            if(div == p)
+            {
+                no = toString(p);
+                System.out.print(no);
+                System.out.print(space);
+            }
+            else{}
+
+            p = p + 1;
+        }
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Lignende begrænsninger findes i \t{if} hvis ``else'' blokken ligger for langt fra starten af if, eller hvis funktioner er for stor (så label'en der skal hoppes til hvis \t{return} mødes er for langt fra hoppet.)
+
+Man kunne argumentere, at compileren ikke formår at producere funktionel kode, når selv et så lille program som ovenstående eksempel ikke virker. Der er dog flere løsningsforslag til problemet.
+
+\begin{itemize}
+\item[$\blacktriangleright$] Man kunne lave en fase der talte kommandoer fra hop til label, og automatisk delte hoppet op i mindre og dermed tilladelige hop.
+\item[$\blacktriangleright$] Compileren kunne producere kode til en anden memory mode --- med tab af DOS' standardfunktioner såsom udskrift til skærm eller læsning af tastatur.
+\end{itemize}
+
+Ingen af løsningerne er specielt elegante. løsningen er, at opdele funktioner løkker mv. i mindre dele. Ovenstående eksempel kunne opsplittes i 
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+.
+.
+    while(p < 100)
+    {
+        div = 2;
+        f();
+    .
+    .
+    }
+
+    f()
+    {
+        while(div != p && p%div != 0)
+        {
+        .
+        .
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Dette er f.eks. gjort i kapitel \ref{s:primtalstest}.
+
+
+\section{Hobens begrænsninger}
+Hobens begrænsninger blev også afmålt. Dette foregik med et program der genererede tal og udskrev disse på skærmen (hvorved String-objekter blev allokeret). Resultatet var at hoben ikke kan sættes til en vilkårlig stor størrelse. Trods testmaskinen indeholdt 96 MB ram, kunne hobstørrelsen ikke overskride  65210 bytes. Blev hobens størrelse forøget til 65212 bytes gav TASM's linker følgende fejlmeddelelse.
+
+\begin{verbatim}
+Turbo Link  Version 3.01 Copyright (c) 1987, 1990 Borland International
+Error: Invalid initial stack offset
+\end{verbatim}
+
+Sættes hoben størrelse endnu højere, f.eks. 65810 gav TASM følgende fejl
+
+\begin{verbatim}
+Turbo Assembler  Version 3.0  Copyright (c) 1988, 1991 Borland International
+
+Assembling file:   prime.asm
+*Warning* foobar.asm(8) Location counter overflow
+**Error** foobar.asm(28) Constant too large
+Error messages:    1
+Warning messages:  1
+Passes:            1
+Remaining memory:  410k
+\end{verbatim}
+
+Sidstnævnte skyldes assembleringen danner 16 bit kode. 
+
+Anvendes en hob på 65210 bytes kunne programmet udskrive alle tal fra 0 til 3480. Da hvert tal på grund af strengrepræsentationen fylder 2+(2 $\cdot$ tallets cifre) bytes i hoben bliver dette\\ 
+$2581\cdot 10 ~~+~~ 900\cdot 8 ~~+~~ 90\cdot 6 ~~+~~ 10\cdot 4 = 37190$ bytes. Dette tal ligger langt fra de 65210, der må altså foregå nogle ukendte mekanismer når assemblerkoden udføres. Trods denne lidt bekymrende beregning, er det faktum, at der blev skabt og anvendt næsten 3500 objekter, hvilket er rigeligt til små programmer.
+
+\section{konklusioner af test}
+\label{s:test_dosproblemer}
+
+
+\begin{enumerate}
+\item[$\blacktriangleright$] Hoben kan kun antage en begrænset størrelse, dog rigeligt stor til de små programmer, kravsspecifikationen foreskriver.
+
+\item[$\blacktriangleright$] Assemblerprogrammerne opsættes til at blive afviklet i såkaldt ``real mode'', hvilket restrikterer længden af hvor langt der kan hoppes, og dermed størrelse af \t{if, while}, og funktioner. Disse problemer kan man dog programmere sig ud af.
+\end{enumerate}
+

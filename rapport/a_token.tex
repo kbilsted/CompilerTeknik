@@ -1,0 +1,24 @@
+\chapter{Token}
+\label{a:token}
+\OverviewLineNoTitle
+\begin{footnotesize}\begin{verbatim}
+public class Token
+{
+    /** Værdierne Token klassen kan indeholde */
+    int id;
+    int nval;
+    String sval;
+    int lineno;
+
+    // Konstruktoren
+    Token(int id, int lineno)
+    { this.id = id; this.lineno = lineno;}
+
+    Token(int id, int nval, int lineno)
+    { this.id = id; this.nval = nval; this.lineno = lineno;}
+
+    Token(int id, String sval, int lineno)
+    { this.id = id; this.sval = sval; this.lineno = lineno;}
+
+}
+\end{verbatim}\end{footnotesize}

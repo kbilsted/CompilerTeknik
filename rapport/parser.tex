@@ -1,0 +1,264 @@
+\chapter{Parser}
+\label{c:parser}
+
+
+\begin{itemize}
+\item[$\circlearrowright$] Opbygning af parsertræet, sektion \xref{s:parser_imp_overvejelser}
+\item[$\circlearrowright$] Repræsentation af parsertræet, sektion \xref{s:imp_af_parsertrae}
+\end{itemize}
+\OverviewLine
+
+Under parsningen kontrolleres syntaksen af sourcekoden, mens en repræsentation af grammatikken skabes i form af et parsertræ. Implementationen af parseren er hvad man kunne kalde ``EBNF grammatikken skrevet på Java'sk''. For hver non-terminal definition (altså for hver højreside) der eksisterer i grammatikken, findes en ækvalent metode med et ækvavilent navn i klassen \t{Parser}.
+
+Foruden de ``grammatiske klasser'' findes der to hjælpemetoder \t{eat(int),\\ errorAndExit(String)}. Den første kontrollerer om det sidstlæste token har samme id, som metodens argument. Er id identisk læses næste token, ellers meldes fejl med \t{errorAndExit()} metoden.
+
+Princippet bag alle metoderne illustreres flot i metoden, der parser et \t{if} udtryk.
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+private Tree if_()
+{
+    eat(IF);
+    eat(LPAR);
+    Tree condCode = E();
+    eat(RPAR);
+
+    eat(LBRACE);
+    Tree thenCode = sentences();
+    eat(RBRACE);
+
+    eat(ELSE);
+    eat(LBRACE);
+    Tree elseCode = sentences();
+    eat(RBRACE);
+
+    return( new If(condCode, thenCode, elseCode, T.lineno) );
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+Syntakskontrollen for et if-udtryk, er på grund af sin rekursive form simpel og overskuelig. Som det ses, er syntakskontrollen af if's kroppe overladt til metoden \t{sentences()}, der igen forgrener sig ud i \t{assign(), while(), break(), ...} Det ses endvidere, at metoden \verb£if_()£ samt metoderne \t{E(), sentences()} alle returnerer et træ. Simultant med syntakskontrollen opbygges parsertræet altså.
+
+Parsningen for udtryk følger på samme vis grammatikken. Metoden for parsning af \i{E$_6$} ses her
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+private Tree E6() throws IOException
+{
+    Tree t = E7();
+    
+    while(T.id == PLUS || T.id == MINUS)
+    {
+        int op;
+
+        if(T.id == PLUS)
+        {
+            eat(PLUS); op = PLUS;
+        }
+        else // -
+        {
+            eat(MINUS); op = MINUS;
+        }
+        OpDual tree = new OpDual(op, t, E7(), T.lineno);
+        t = tree;
+    }
+    return(t);
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+Man skal dog være særlig omhyggelig i konstruktionen af parsertræet, da operatorer med ens prioritet ikke nødvendigvis garanterer, at evalueringsrækkefølgen er uden betydning. Således er f.eks. $2-(3-4) \neq (2-3)-4$. Udtrykket \t{1-2-3} er ifølge reglen om venstreassociering \t{(1-2)-3} vil i parsertræet blive dannet som et ``minustræ'' med 1 og 2 som børn. Dette træ er igen barn i et ``minustræ'' med 3 som det andet barn. Dette sker ved 1 læses ved \t{Tree t = E7();}. Dernæst noteres operatoren \t{-}, og slutteligt oprettes et \t{opDual}-træ med  ``\t{t}'' som venstretræ, \t{-} som operator, og næste del af af udtrykket (som er ``2'') som højretræ. Dette træ bliver herefter venstre barn i et nyt ``minustræ''. Oprettelsen af træet for udtrykket \t{1-2-3} er skitseret på \fref{f:buildTree}. 
+
+
+\begin{figure}[!h]
+\centerline{\includegraphics[angle=-90]{buildTree.pdf}}
+\Caption{Opbygningen af parsertræet for udtrykket \t{1-2-3}.}
+\label{f:buildTree}
+\end{figure}
+
+
+
+\section{Implementationsovervejelser}
+\label{s:parser_imp_overvejelser}
+
+Der vil i denne sektion blive diskuteret tre overordnede implementationer af parsertræet
+
+\subsection{Løsningsmodel 1}
+Parsertræet er et stort sammenhængende træ, hvor hver non-terminal implementeres i en separat klasse indeholdende nok felter til en repræsentation af produktionen af non-terminalen. I ovenstående eksempel, vil \t{If} klassen indeholde tre referencer til henholdsvis et E-træ og to sentences-træer.
+
+Gentagelser der i grammatikken angives med \{\} implementeres med en next-pointer. Klassen \t{classcontents()} vil implementeres således:
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+private Tree classcontents()
+{
+    .
+    .
+    Tree contents;
+    Tree next;
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\subsection{Løsningsmodel 2}
+Den anden løsningsmodel implementerer ligesom den første en klasse for hver non-terminal. Men håndteringen med gentageler administreres med Javas \t{Vector} klasse istedet. Dette gør koden mere overskuelig og lettere at skrive, da håndteringen med \t{elementAt()} er simplere end at jonglere med next-pointere.
+
+
+\subsection{Løsningsmodel 3}
+Den sidste løsningsmodel implementerer som de to foregående klasser for \i{S}, \i{classdef}, \i{classcontents} og \i{fncdef} fra grammatikken som selvstændige klasser. De sidste non-terminaler (\i{fnccall}, \i{while}, \i{if}, \dots og \i{E}'erne) repræsenteres ved en generisk klasse, hvilket kraftigt reducerer klassernes antal. Den generiske klasse implementeres som:
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+private generic()
+{
+    String op;
+    Tree one;
+    Tree two;
+    Tree three;
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+De forskellige dele af grammatikken kan dermed repræsenteres således:
+
+\begin{center}
+\begin{tabular}{llll}
+Op          & one       & two           & threæ \\
+\hline
+``if''      & E         & s$_1$         & s$_2$\\
+``break''   & \t{null}  & \t{null}      & \t{null}\\
+``vardef''  & E         & E             & \t{null}\\
+``\t{+}''   & E         & E             & \t{null}\\
+``\t{!}''   & E         & \t{null}      & \t{null}\\
+\hline
+\end{tabular}
+\end{center}
+\medskip
+
+Løsningsmodellen gør administrationen let, da der dels ikke er specielt mange klasser, dels vil ny funktionalitet oftest kunne tilpasses løsningsmodellen, som i værste tilfælde blot skulle udvides med flere felter. Omvendt mangler løsningsmodellen struktur, og kan nemt fremstå som et ``hack''. Et lidt overdrevet eksempel er, at når \i{while} skal defineres, defineres det som \t{(``while'', s$_1$, E, null)} --- altså stik modsat af definitionen af \i{if}. Eksemplet ville fungere, men der vil med stor sandsynlighed opstå fejl i senere faser, fordi felternes betydning let forveksles af programmøren.
+
+
+\subsection{Valg af repræsentation}
+Valget faldt på en kombination af løsningsmodel 2 og 3. Løsningsmodel 2 administrerede \t{\{..\}} fra grammatikken ved brug af \t{Vector}-klassen, og satte parsertræet i faste rammer igennem de mange klassedefinitioner. Løsningsmodel 3 angav hvorledes antallet af klasser og dermed antallet af forskellige knuder i parsertræet, kunne reduceres. Non-terminalerne E--E$_{11}$ blev derfor implementeret ved hjælp af følgende fire generiske klasser.
+
+\begin{tabular}{lll}
+Klassenavn      & Dækningsområde & non-terminaler\\
+\hline
+\t{opMonadic}   & Monadiske operatorer          & E$_9$ \\
+\t{opDual}      & Duale operatorer              & E -- E$_8$\\
+\t{opCall}      & Variable og funktionskald     & E$_{10}$\\
+\t{opConst}     & Konstante udtryk              & E$_{11}$\\
+\hline
+\end{tabular}
+
+
+\section{Implementering af parsertræet}
+\label{s:imp_af_parsertrae}
+Parsertræet er realiseret udfra en abstrakt klasse \t{Tree}, hvis eneste indhold er en variabel indeholdende et linienummer og metoder til fejludskrift og debug. Alle klasserne arver denne klasse, og er således alle af samme type. Fordelen ved denne konstruktion er, at  reference variablen eksempelvis: \t{Tree p}, kan referere til en hvilken som helst klasse (knudetype) i parsertræet.
+
+Linienummeret der lagres, er stedet i sourcekoden den enkelte knude repræsenterer.
+
+Resultatet er 1 superklasse (\t{Tree}) og 15 nedarvende klasser, der knytter sig tæt til grammatikken, uden at være en konkret afbildning af den. Klasserne er alle realiseret med private felter og public accessor metoder, således, implementationen med \t{Vector} kan udskiftes med en mere effektiv klasse uden vanskeligheder. Dette sker på bekostning af overskueligheden, da klassedefinitionerne alle er blevet væsenligt større. Dog skal de fleste linier kode tilskrives \t{toString()} metoderne der anvendes til testformål.
+
+
+\subsection{Koden}
+\begin{quote}\begin{footnotesize}\begin{verbatim}
+public abstract class Tree
+{
+    public abstract String toString();
+
+    protected void errorAndExit(String s)
+    {System.out.print(s); System.exit(0);}
+
+    protected int lineno; // line # of element in source
+    public int lineno(){return(lineno);}
+}
+.
+.
+.
+
+class Sentences extends Tree
+{
+    private int getCounter = 0;
+    private Vector sList = new Vector(); // liste of <sentences>
+
+    // constructor
+    Sentences(int lineno){super.lineno = lineno;}
+
+    public void add(Object o){sList.addElement(o);}
+
+    public Tree getNext()
+    {
+        if(getcounter > -1 && getCounter < sList.size())
+            return((Tree) sList.elementAt(getCounter++));
+        return(null);
+    }
+
+    public void pushBack(){getCounter--;}
+
+    public String toString()
+    {
+        StringBuffer buf = new StringBuffer();
+
+        for(int i = 0; i < sList.size(); i++)
+            buf.append( sList.elementAt(i).toString() + "\n");
+
+        return(buf.toString());
+    }
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+\section{Parsertræet}
+Den interne repræsentation er skitseret på \fref{f:parsertrae} for det følgende lille kodeeksempel. På figuren ses øverst klassen \t{classdef} istedet for \t{S} som grammatikken foreskrev. \t{S} er blevet fjernet, og er blevet implementeret i \t{classdef}. Navnene i parentes evt. efterfulgt af en slash (``/''), angiver det tilladte indhold af en knude, det vil sige at en \t{defList} knude indeholder enten \t{varDef} og/eller \t{fncDef} knuder. Nederst ved opsplitningen af \t{opDual} ses effekten af \i{E$_{10}$}-\i{E$_{11}$} opsplitningen, da ``\t{i}'' er en \t{opCall} knude (\i{E$_{10}$}), mens ``\t{3}'' er en \t{opConst} knude (\i{E$_{11}$}). Figuren illustrerer endvidere, at træstrukturen gør tegnene \t{(, ), \{, \}, ;} osv overflødige.
+
+
+\begin{quote}\example\begin{footnotesize}\begin{verbatim}
+class A
+{
+    int i;
+
+    void f(int j)
+    {
+        if(i < 3)
+        {
+        }
+        else
+        {
+        }
+
+        while()
+        {
+        }
+    }
+}
+
+class B
+{
+}
+\end{verbatim}\end{footnotesize}\end{quote}
+
+
+
+
+
+
+\begin{flushleft}
+\begin{figure}[!h]
+\xymatrix@=0.3cm
+{
+                                        &                               &                               &                                                                                   & \XYBOX{classdef} \DOWN    \\
+                                        &                               &                               &                                                                                   & \XYBOX{Vector class\\(\t{String}:name,\\classcontents)} \DOWNR \DOWNLL \DOWN \DOWNL\\
+                                        &                               & \XYBOX{~~~A~~~}                       & \XYBOX{classcontents} \DOWN                                               & \XYBOX{~~~B~~~}                                                                           & \XYBOX{classcontents} \DOWN\\
+                                        &                               &                               & \XYBOX{\t{Vector} defList \\(vardef)/\\(fncdef)} \DOWNLL \DOWN                        &                                                                                   & \XYBOX{\t{Vector} defList \\(vardef)/\\(fncdef)}  \ar@{.}[d]  \\
+                                        & \XYBOX{vardef} \DOWN \DOWNL   &                               & \XYBOX{fncdef} \DOWNL \DOWN \DOWNR                                                &                                                                                   &                                                           \\
+\XYBOX{\t{String}\\ type}\DOWN          & \XYBOX{\t{String}\\name}\DOWN & \XYBOX{\t{String}\\name}\DOWN & \XYBOX{\t{Vector} arglist\\(\t{String}: type,\\\t{String}: name)} \DOWNR \DOWN    & \XYBOX{sentences} \DOWNR                                                          &                                                           \\
+\XYBOX{~~~\t{int}~~~}                   & \XYBOX{~~~i~~~}               & \XYBOX{~~~f~~~}               & \XYBOX{~~~\t{int}~~~}                                                             & \XYBOX{~~~j~~~}                                                                           & \XYBOX{\t{Vector} sentences\\(vardef)/\\(fncdef)/\\(if)/\\(while)/\\(break)/\\(return)/\\(assign)} \DOWNLLL \DOWNLL \\
+                                        &                               & \XYBOX{if}\DOWNLL \DOWNL \DOWN& \XYBOX{while} \DOWN \DOWNR                                                        &       \\
+\XYBOX{~~~E~~~} \ar@{-}[ddr]            & \XYBOX{sentences} \ar@{.}[d]  & \XYBOX{sentences} \ar@{.}[d]  & \XYBOX{~~~E~~~} \ar@{.}[d]                                                        & \XYBOX{sentences} \ar@{.}[d]          \\
+                                        &                               &                               &                                                                                   &                                       \\
+                                        & \XYBOX{opDual} \DOWN \DOWNL \DOWNR    \\
+\XYBOX{opCall} \DOWN                    & \XYBOX{~~~\t{<}~~~}           & \XYBOX{opConst} \DOWN \\
+\XYBOX{~~~i~~~}                         &                               & \XYBOX{~~~3~~~} \\
+}
+\Caption{Grafisk præsentation af et parsertræ.}
+\label{f:parsertrae}
+\end{figure}
+\end{flushleft}
+
+
+Den fulde implementation findes i \aref{a:parser}.
